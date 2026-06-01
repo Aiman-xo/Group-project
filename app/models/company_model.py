@@ -5,6 +5,7 @@ import uuid
 
 class Company(Base):
     __tablename__ = 'companies'
+    __table_args__ = {"schema": "public"}
 
     id = Column(
         UUID(as_uuid=True),
@@ -18,3 +19,5 @@ class Company(Base):
     website_link:str = Column(String,nullable=True)
     industry:str = Column(String,nullable=False)
     password:str = Column(String,nullable=False)
+
+    schema_name = Column(String, unique=True, nullable=False)

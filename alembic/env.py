@@ -4,7 +4,7 @@ from app.core.database import Base
 import app.models
 
 from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import pool,text
 import os
 
 from alembic import context
@@ -57,7 +57,7 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
-
+tenant_schema = context.get_x_argument(as_dictionary=True).get("tenant")
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
@@ -72,6 +72,15 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        if tenant_schema:
+            # 1. Physically create the folder in Postgres if it doesn't exist
+            connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{tenant_schema}"'))
+            # 2. Tell Postgres to look ONLY inside this folder for this session
+            connection.execute(text(f'SET search_path TO "{tenant_schema}"'))
+            connection.commit()
+            
+            # 3. Prevent Alembic from looking back at the default 'public' tables
+            connection.dialect.default_schema_name = tenant_schema
         context.configure(
             connection=connection, target_metadata=target_metadata
         )
