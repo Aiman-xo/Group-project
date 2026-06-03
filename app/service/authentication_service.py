@@ -2,9 +2,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.models.company_model import Company
-from app.schemas.authentication_schema import CompanyRegister
+from app.schemas.authentication_schema import CompanyRegister,LoginRequest
 
-from app.core.security import hash_password,create_access_token,create_refresh_token
+from app.core.security import hash_password,create_access_token,create_refresh_token,verify_password
 from app.core.multitenancy import create_tenant_schema_tables
 
 
@@ -86,9 +86,31 @@ def register_company(
 
 
 
-def login_company():
-    return {"message":"login"}
-
-def forget_password():
+def login_company(login_data:LoginRequest,db:Session):
+    company=db.query(Company).filter(Company.email==login_data.email).first()
+    if not company:
+        return {"message":"Invalid Email and Password"}
+    if not verify_password(login_data.password,company.password):
+        return{
+            "message":"Invalid Email and Password"
+        }
+    access_token=create_access_token(
+        data={
+            "sub":company.email
+        }
+    )
+    refresh_token = create_refresh_token(
+        data={
+            "sub": company.email
+        }
+    )
+    return{
+        "message":"Login Successfully",
+        "access_token":access_token,
+        "refresh_token":refresh_token,
+        "token_type":"bearer",
+        "schema_name":company.schema_name
+    }
+def forget_password(l):
     pass
 
