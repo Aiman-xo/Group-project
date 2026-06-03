@@ -15,7 +15,10 @@ load_dotenv()
 # access to the values within the .ini file in use.
 config = context.config
 
-config.set_main_option("sqlalchemy.url", os.getenv("DATABASE_URL"))
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    database_url = database_url.replace("%", "%%")
+config.set_main_option("sqlalchemy.url", database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -57,7 +60,16 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
-tenant_schema = context.get_x_argument(as_dictionary=True).get("tenant")
+x_args = context.get_x_argument(as_dictionary=True)
+if not x_args:
+    x_opt = config.get_main_option("x")
+    if x_opt:
+        x_args = {}
+        for arg in x_opt.split():
+            k, _, v = arg.partition("=")
+            x_args[k] = v
+
+tenant_schema = x_args.get("tenant") if isinstance(x_args, dict) else None
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
@@ -71,6 +83,7 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
 
+    print(f"DEBUG: tenant_schema is {tenant_schema}")
     with connectable.connect() as connection:
         if tenant_schema:
             # 1. Physically create the folder in Postgres if it doesn't exist
@@ -82,7 +95,9 @@ def run_migrations_online() -> None:
             # 3. Prevent Alembic from looking back at the default 'public' tables
             connection.dialect.default_schema_name = tenant_schema
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            version_table_schema=tenant_schema
         )
 
         with context.begin_transaction():
