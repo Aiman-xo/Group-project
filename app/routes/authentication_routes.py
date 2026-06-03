@@ -2,7 +2,7 @@ from fastapi import APIRouter,Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 
-from app.schemas.authentication_schema import CompanyRegister
+from app.schemas.authentication_schema import CompanyRegister,LoginRequest
 from app.service.authentication_service import register_company,login_company
 
 router=APIRouter(
@@ -21,5 +21,5 @@ def register(
     )
 
 @router.post("/login")
-def login():
-    return login_company()
+def login(login_data:LoginRequest,db:Session=Depends(get_db)):
+    return login_company(login_data,db)
