@@ -1,6 +1,15 @@
 # THIS IS WHERE WE WRITE THE ACCESS TOKEN CREATION AND REFRESH TOKEN CREATION AND PASSWORD HASHING CODE.
 
 from passlib.context import CryptContext
+from jose import jwt
+from datetime import datetime, timedelta
+
+from app.core.config import (
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS
+)
 
 # bcrypt hashing algorithm
 pwd_context = CryptContext(
@@ -15,3 +24,40 @@ def hash_password(password: str):
     """
 
     return pwd_context.hash(password)
+
+def create_access_token(data: dict):
+
+    to_encode = data.copy()
+
+    expire = datetime.utcnow() + timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+
+    to_encode.update({
+        "exp": expire
+    })
+
+    return jwt.encode(
+        to_encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
+
+
+def create_refresh_token(data: dict):
+
+    to_encode = data.copy()
+
+    expire = datetime.utcnow() + timedelta(
+        days=REFRESH_TOKEN_EXPIRE_DAYS
+    )
+
+    to_encode.update({
+        "exp": expire
+    })
+
+    return jwt.encode(
+        to_encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )

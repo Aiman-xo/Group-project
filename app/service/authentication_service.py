@@ -4,7 +4,7 @@ from sqlalchemy import text
 from app.models.company_model import Company
 from app.schemas.authentication_schema import CompanyRegister
 
-from app.core.security import hash_password
+from app.core.security import hash_password,create_access_token,create_refresh_token
 from app.core.multitenancy import create_tenant_schema_tables
 
 
@@ -64,13 +64,26 @@ def register_company(
 
     db.refresh(new_company)
 
+    access_token = create_access_token(
+        data={
+            "sub": company_data.email
+        }
+    )
+
+    refresh_token = create_refresh_token(
+    data={
+        "sub": company_data.email
+    }
+)
+
     return {
         "message": "Company registered successfully",
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
         "schema_name": safe_schema
     }
 
-def refresh_token():
-    pass
 
 
 def login_company():
