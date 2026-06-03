@@ -12,3 +12,7 @@ class CompanyRegister(BaseModel):
 class LoginRequest(BaseModel):
     email:EmailStr
     password:str
+
+class OTPVerifyRequest(BaseModel):
+    email: EmailStr
+    otp: str
