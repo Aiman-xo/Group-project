@@ -31,6 +31,13 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
+def include_object(object, name, type_, reflected, compare_to):
+    if tenant_schema and tenant_schema != "public":
+        # If migrating an isolated tenant, block the shared 'companies' table
+        if type_ == "table" and name == "companies":
+            return False
+    return True
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
@@ -84,6 +91,7 @@ def run_migrations_online() -> None:
     )
 
     print(f"DEBUG: tenant_schema is {tenant_schema}")
+
     with connectable.connect() as connection:
         if tenant_schema:
             # 1. Physically create the folder in Postgres if it doesn't exist
@@ -97,7 +105,8 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            version_table_schema=tenant_schema
+            version_table_schema=tenant_schema,
+            include_object=include_object
         )
 
         with context.begin_transaction():
