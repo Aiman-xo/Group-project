@@ -6,12 +6,19 @@ from app.schemas.authentication_schema import CompanyRegister,LoginRequest
 
 from app.core.security import hash_password,create_access_token,create_refresh_token,verify_password
 from app.core.multitenancy import create_tenant_schema_tables
+from app.service.otp_service import generate_otp
+from app.utils.email import send_otp_email
+
+from fastapi import BackgroundTasks,HTTPException,status
+from redis.asyncio import Redis
 
 
 
-def register_company(
+async def register_company(
     company_data: CompanyRegister,
-    db: Session
+    db: Session,
+    background_tasks:BackgroundTasks,
+    redis_client:Redis
 ):
 
     # Check email already exists
@@ -20,49 +27,67 @@ def register_company(
     ).first()
 
     if existing_company:
-        return {
-            "message": "Email already registered"
-        }
-
+        raise HTTPException(status_code=400,detail='Email exists Try other one!')
     # Generate tenant schema name
     safe_schema = (
         f"tenant_{company_data.company_name.lower().replace(' ', '_')}"
     )
 
-    # Create schema physically in postgres
-    db.execute(
-        text(
-            f'CREATE SCHEMA IF NOT EXISTS "{safe_schema}"'
+    try:
+        # Create schema physically in postgres
+        db.execute(
+            text(
+                f'CREATE SCHEMA IF NOT EXISTS "{safe_schema}"'
+            )
         )
-    )
 
-    db.commit()
+        db.commit()
 
-    # Run tenant migration
-    create_tenant_schema_tables(
-        safe_schema
-    )
+        # Run tenant migration
+        create_tenant_schema_tables(
+            safe_schema
+        )
+    except Exception as e:
+        db.execute(text(f'DROP SCHEMA IF EXISTS "{safe_schema}" CASCADE'))
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database workspace allocation failed: {str(e)}"
+        )
 
-    # Hash password
-    hashed_password = hash_password(
-        company_data.password
-    )
+    try:
+        # Hash password
+        hashed_password = hash_password(
+            company_data.password
+        )
 
-    # Save company
-    new_company = Company(
-        email=company_data.email,
-        company_name=company_data.company_name,
-        website_link=company_data.website_link,
-        industry=company_data.industry,
-        password=hashed_password,
-        schema_name=safe_schema
-    )
+        # Save company
+        new_company = Company(
+            email=company_data.email,
+            company_name=company_data.company_name,
+            website_link=company_data.website_link,
+            industry=company_data.industry,
+            password=hashed_password,
+            schema_name=safe_schema
+        )
 
-    db.add(new_company)
+        db.add(new_company)
 
-    db.commit()
+        db.commit()
 
-    db.refresh(new_company)
+        db.refresh(new_company)
+
+        otp = await generate_otp(company_data.email, redis_client)
+        await send_otp_email(company_data.email, otp, background_tasks)
+    
+    except Exception as e:
+        # CRITICAL SAFETY: Cascade drop schema if secondary integrations like Redis fail mid-process
+        db.execute(text(f'DROP SCHEMA IF EXISTS "{safe_schema}" CASCADE'))
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration process interrupted: {str(e)}"
+        )
 
     access_token = create_access_token(
         data={
@@ -77,7 +102,7 @@ def register_company(
 )
 
     return {
-        "message": "Company registered successfully",
+        "message": "Company registered successfully, Please verify your OTP",
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
