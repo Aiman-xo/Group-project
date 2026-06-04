@@ -7,11 +7,15 @@ from app.schemas.authentication_schema import CompanyRegister,LoginRequest
 from app.core.security import hash_password,create_access_token,create_refresh_token,verify_password
 from app.core.multitenancy import create_tenant_schema_tables
 
+from app.core.session import generate_session_id
+from redis.asyncio import Redis
 
 
-def register_company(
+
+async def register_company(
     company_data: CompanyRegister,
-    db: Session
+    db: Session,
+    redis_client: Redis
 ):
 
     # Check email already exists
@@ -64,17 +68,26 @@ def register_company(
 
     db.refresh(new_company)
 
+    session_id = generate_session_id()
+
     access_token = create_access_token(
         data={
-            "sub": company_data.email
+            "sub": str(new_company.id)  #i changed email to id for consistency bcz email can changeble
         }
     )
 
     refresh_token = create_refresh_token(
-    data={
-        "sub": company_data.email
-    }
-)
+        data={
+            "sub": str(new_company.id),  #i changed email to id for consistency bcz email can changeble
+            "session_id": session_id
+        }
+    )
+    await redis_client.set(
+        f"refresh:{new_company.id}:{session_id}",
+        refresh_token,
+        ex=60 * 60 * 24 * 7
+    )
+
 
     return {
         "message": "Company registered successfully",
@@ -86,7 +99,7 @@ def register_company(
 
 
 
-def login_company(login_data:LoginRequest,db:Session):
+async def login_company(login_data:LoginRequest,db:Session,redis_client: Redis):
     company=db.query(Company).filter(Company.email==login_data.email).first()
     if not company:
         return {"message":"Invalid Email and Password"}
@@ -94,16 +107,25 @@ def login_company(login_data:LoginRequest,db:Session):
         return{
             "message":"Invalid Email and Password"
         }
+    session_id = generate_session_id()
+
     access_token=create_access_token(
         data={
-            "sub":company.email
+            "sub": str(company.id)  #i changed email to id for consistency bcz email can changeble
         }
     )
     refresh_token = create_refresh_token(
         data={
-            "sub": company.email
+            "sub": str(company.id),  #i changed email to id for consistency bcz email can changeble
+            "session_id": session_id
         }
     )
+    await redis_client.set(
+        f"refresh:{company.id}:{session_id}",
+        refresh_token,
+        ex=60 * 60 * 24 * 7
+    )
+
     return{
         "message":"Login Successfully",
         "access_token":access_token,
