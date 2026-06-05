@@ -12,6 +12,8 @@ from app.utils.email import send_otp_email
 from fastapi import BackgroundTasks,HTTPException,status
 from redis.asyncio import Redis
 
+from app.core.session import generate_session_id
+
 
 
 async def register_company(
@@ -89,17 +91,26 @@ async def register_company(
             detail=f"Registration process interrupted: {str(e)}"
         )
 
+    session_id = generate_session_id()
+
     access_token = create_access_token(
         data={
-            "sub": company_data.email
+            "sub": str(new_company.id)  #i changed email to id for consistency bcz email can changeble
         }
     )
 
     refresh_token = create_refresh_token(
-    data={
-        "sub": company_data.email
-    }
-)
+        data={
+            "sub": str(new_company.id),  #i changed email to id for consistency bcz email can changeble
+            "session_id": session_id
+        }
+    )
+    await redis_client.set(
+        f"refresh:{new_company.id}:{session_id}",
+        refresh_token,
+        ex=60 * 60 * 24 * 7
+    )
+
 
     return {
         "message": "Company registered successfully, Please verify your OTP",
@@ -111,7 +122,7 @@ async def register_company(
 
 
 
-def login_company(login_data:LoginRequest,db:Session):
+async def login_company(login_data:LoginRequest,db:Session,redis_client: Redis):
     company=db.query(Company).filter(Company.email==login_data.email).first()
     if not company:
         return {"message":"Invalid Email and Password"}
@@ -119,16 +130,25 @@ def login_company(login_data:LoginRequest,db:Session):
         return{
             "message":"Invalid Email and Password"
         }
+    session_id = generate_session_id()
+
     access_token=create_access_token(
         data={
-            "sub":company.email
+            "sub": str(company.id)  #i changed email to id for consistency bcz email can changeble
         }
     )
     refresh_token = create_refresh_token(
         data={
-            "sub": company.email
+            "sub": str(company.id),  #i changed email to id for consistency bcz email can changeble
+            "session_id": session_id
         }
     )
+    await redis_client.set(
+        f"refresh:{company.id}:{session_id}",
+        refresh_token,
+        ex=60 * 60 * 24 * 7
+    )
+
     return{
         "message":"Login Successfully",
         "access_token":access_token,
