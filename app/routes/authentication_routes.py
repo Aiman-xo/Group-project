@@ -10,32 +10,35 @@ from app.service.otp_service import verify_otp
 
 from redis.asyncio import Redis
 
+
 router=APIRouter(
     prefix="/auth",
     tags=["authentication"]
 )
 
-@router.post("/register",status_code=status.HTTP_200_OK)
+
+@router.post("/register", status_code=status.HTTP_200_OK)
 async def register(
     company: CompanyRegister,
-    background_tasks:BackgroundTasks,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    redis_client:Redis=Depends(get_redis)
+    redis_client: Redis = Depends(get_redis)
 ):
-    try:
-        return await register_company(
-            company_data=company,
-            db=db,
-            background_tasks=background_tasks,
-            redis_client=redis_client
-        )
-    except Exception as e:
-        print(f"REGISTER ERROR: {e}")   # ← this will show in terminal
-        raise
+    return await register_company(
+        company_data=company,
+        db=db,
+        background_tasks=background_tasks,
+        redis_client=redis_client
+    )
+
 
 @router.post("/login",status_code=status.HTTP_200_OK)
-def login(login_data:LoginRequest,db:Session=Depends(get_db)):
-    return login_company(login_data,db)
+async def login(
+    login_data:LoginRequest,db:Session=Depends(get_db),redis_client: Redis = Depends(get_redis)
+):
+    return await login_company(
+        login_data,db,redis_client=redis_client
+    )
 
 
 @router.post("/verify-otp", status_code=status.HTTP_200_OK)
