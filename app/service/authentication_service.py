@@ -7,6 +7,8 @@ from app.core.security import hash_password,create_access_token,create_refresh_t
 
 from app.service.otp_service import generate_otp
 from app.utils.email import send_otp_email
+from app.core.session import generate_session_id
+
 
 from fastapi import BackgroundTasks,HTTPException,status
 from redis.asyncio import Redis
