@@ -1,12 +1,15 @@
 from fastapi import APIRouter,Depends,BackgroundTasks,status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from starlette.requests import Request
 
 from app.schemas.authentication_schema import CompanyRegister,LoginRequest
 from app.service.authentication_service import register_company,login_company
 from app.core.redis_config import get_redis
 from app.schemas.authentication_schema import OTPVerifyRequest
 from app.service.otp_service import verify_otp
+
+from app.core.limiter import limiter
 
 from redis.asyncio import Redis
 
@@ -42,8 +45,10 @@ async def login(
 
 
 @router.post("/verify-otp", status_code=status.HTTP_200_OK)
+@limiter.limit("5/minute")
 async def verify_otp_route(
-    request: OTPVerifyRequest,
+    request: Request,
+    payload: OTPVerifyRequest,
     db: Session = Depends(get_db),
     redis_client: Redis = Depends(get_redis)
 ):
@@ -52,8 +57,8 @@ async def verify_otp_route(
     """
     try:
         return await verify_otp(
-            email=request.email, 
-            otp=request.otp, 
+            email=payload.email, 
+            otp=payload.otp, 
             redis_client=redis_client, 
             db=db
         )

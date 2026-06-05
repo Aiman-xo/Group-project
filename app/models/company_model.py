@@ -20,6 +20,6 @@ class Company(Base):
     industry:str = Column(String,nullable=False)
     password:str = Column(String,nullable=False)
 
-    schema_name = Column(String, unique=True, nullable=False)
+    schema_name = Column(String, unique=True, nullable=True)
 
     is_verified:bool = Column(Boolean,default=False,nullable=False,server_default="false")
