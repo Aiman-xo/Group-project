@@ -17,5 +17,5 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(
 )
 
 
-OTP_EXPIRY = os.getenv('OTP_EXPIRY')
+OTP_EXPIRY = int(os.getenv('OTP_EXPIRY'))
 
