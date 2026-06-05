@@ -16,4 +16,5 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(
     os.getenv("REFRESH_TOKEN_EXPIRE_DAYS")
 )
 
-REDIS_URL = os.getenv("REDIS_URL")
+OTP_EXPIRY = os.getenv('OTP_EXPIRY')
+
