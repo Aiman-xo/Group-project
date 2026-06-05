@@ -1,5 +1,5 @@
 from app.core.database import Base
-from sqlalchemy import Column,String,Integer
+from sqlalchemy import Column,String,Integer,Boolean
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
@@ -21,3 +21,5 @@ class Company(Base):
     password:str = Column(String,nullable=False)
 
     schema_name = Column(String, unique=True, nullable=False)
+
+    is_verified:bool = Column(Boolean,default=False,nullable=False,server_default="false")
