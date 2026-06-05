@@ -8,6 +8,8 @@ from app.core.multitenancy import create_tenant_schema_tables
 from app.core.security import create_access_token,create_refresh_token
 from sqlalchemy import text
 
+from app.core.session import generate_session_id
+
 
 from app.core.config import OTP_EXPIRY
   
@@ -99,16 +101,24 @@ async def verify_otp(email: str, otp: str, redis_client: redis.Redis,db: Session
 
     # await redis_client.delete(f"otp:{email}")
 
+    session_id = generate_session_id()
+
     access_token = create_access_token(
         data={
-            "sub": company.email
+            "sub": str(company.id)  #i changed email to id for consistency bcz email can changeble
         }
     )
 
     refresh_token = create_refresh_token(
         data={
-            "sub": company.email
+            "sub": str(company.id),  #i changed email to id for consistency bcz email can changeble
+            "session_id": session_id
         }
+    )
+    await redis_client.set(
+        f"refresh:{company.id}:{session_id}",
+        refresh_token,
+        ex=60 * 60 * 24 * 7
     )
     
     return {
