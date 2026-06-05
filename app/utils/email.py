@@ -17,6 +17,7 @@ conf = ConnectionConfig(
     USE_CREDENTIALS=True,
 )
 
+fm = FastMail(conf)
 async def send_otp_email(email: str, otp: str, background_tasks: BackgroundTasks):
     """
     Sends OTP to the registered email as a background task.
@@ -45,5 +46,5 @@ async def send_otp_email(email: str, otp: str, background_tasks: BackgroundTasks
         subtype=MessageType.html
     )
 
-    fm = FastMail(conf)
+    
     background_tasks.add_task(fm.send_message, message)  # sends in background
