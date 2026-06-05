@@ -73,7 +73,7 @@ async def register_company(
 
 
 
-def login_company(login_data:LoginRequest,db:Session):
+async def login_company(login_data:LoginRequest,db:Session,redis_client: Redis):
     company=db.query(Company).filter(Company.email==login_data.email).first()
     if not company:
         return {"message":"Invalid Email and Password"}
@@ -81,16 +81,25 @@ def login_company(login_data:LoginRequest,db:Session):
         return{
             "message":"Invalid Email and Password"
         }
+    session_id = generate_session_id()
+
     access_token=create_access_token(
         data={
-            "sub":company.email
+            "sub": str(company.id)  #i changed email to id for consistency bcz email can changeble
         }
     )
     refresh_token = create_refresh_token(
         data={
-            "sub": company.email
+            "sub": str(company.id),  #i changed email to id for consistency bcz email can changeble
+            "session_id": session_id
         }
     )
+    await redis_client.set(
+        f"refresh:{company.id}:{session_id}",
+        refresh_token,
+        ex=60 * 60 * 24 * 7
+    )
+
     return{
         "message":"Login Successfully",
         "access_token":access_token,
