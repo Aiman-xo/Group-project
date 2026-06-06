@@ -1,4 +1,4 @@
-from fastapi import APIRouter,Depends,BackgroundTasks,status
+from fastapi import APIRouter,Depends,BackgroundTasks,status,Response
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from starlette.requests import Request
@@ -23,25 +23,63 @@ router=APIRouter(
 @router.post("/register", status_code=status.HTTP_200_OK)
 async def register(
     company: CompanyRegister,
+    response: Response,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     redis_client: Redis = Depends(get_redis)
 ):
-    return await register_company(
+    
+    result = await register_company(
         company_data=company,
         db=db,
         background_tasks=background_tasks,
         redis_client=redis_client
     )
 
+    if "refresh_token" in result:
+        response.set_cookie(
+            key="refresh_token",
+            value=result["refresh_token"],
+            httponly=True,
+            secure=False,      # localhost
+            samesite="lax",
+            max_age=60 * 60 * 24 * 7
+        )
 
-@router.post("/login",status_code=status.HTTP_200_OK)
+        del result["refresh_token"]
+
+    return result
+
+
+
+@router.post("/login", status_code=status.HTTP_200_OK)
 async def login(
-    login_data:LoginRequest,db:Session=Depends(get_db),redis_client: Redis = Depends(get_redis)
+    login_data: LoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+    redis_client: Redis = Depends(get_redis)
 ):
-    return await login_company(
-        login_data,db,redis_client=redis_client
+    
+    result = await login_company(
+        login_data,
+        db,
+        redis_client
     )
+
+    if "refresh_token" in result:
+        response.set_cookie(
+            key="refresh_token",
+            value=result["refresh_token"],
+            httponly=True,
+            secure=False,      # localhost development
+            samesite="lax",
+            max_age=60 * 60 * 24 * 7
+        )
+
+        # Don't send refresh token in response body
+        del result["refresh_token"]
+
+    return result
 
 
 @router.post("/verify-otp", status_code=status.HTTP_200_OK)
