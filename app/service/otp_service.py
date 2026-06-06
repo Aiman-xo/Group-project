@@ -128,3 +128,60 @@ async def verify_otp(email: str, otp: str, redis_client: redis.Redis,db: Session
         "token_type": "bearer",
         "schema_name": safe_schema
     }
+
+async def generate_forgot_password_otp(email: str,redis_client: redis.Redis
+):
+    secret = pyotp.random_base32()
+
+    totp = pyotp.TOTP(
+        secret,
+        interval=OTP_EXPIRY
+    )
+
+    otp = totp.now()
+    await redis_client.setex(
+        f"forgot_otp:{email}",
+        OTP_EXPIRY,
+        secret
+    )
+
+    return otp
+
+async def verify_forgot_password_otp(email: str,otp: str,  redis_client: redis.Redis):
+    stored_secret = await redis_client.get(
+        f"forgot_otp:{email}"
+    )
+
+    if not stored_secret:
+        raise HTTPException(
+            status_code=400,
+            detail="OTP expired"
+        )
+
+    totp = pyotp.TOTP(
+        stored_secret,
+        interval=OTP_EXPIRY
+    )
+
+    if not totp.verify(
+        otp,
+        valid_window=1
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid OTP"
+        )
+
+    await redis_client.setex(
+        f"reset_allowed:{email}",
+        300,
+        "true"
+    )
+
+    await redis_client.delete(
+        f"forgot_otp:{email}"
+    )
+
+    return {
+        "message":"OTP verified successfully"
+    }

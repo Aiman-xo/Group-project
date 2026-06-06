@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from starlette.requests import Request
 
-from app.schemas.authentication_schema import CompanyRegister,LoginRequest
-from app.service.authentication_service import register_company,login_company
+from app.schemas.authentication_schema import CompanyRegister,LoginRequest,ForgotPasswordRequest,VerifyForgotPasswordOTPRequest,ResetPasswordRequest
+from app.service.authentication_service import register_company,login_company,forgot_password,verify_forgot_password,reset_password
 from app.core.redis_config import get_redis
 from app.schemas.authentication_schema import OTPVerifyRequest
 from app.service.otp_service import verify_otp
@@ -103,3 +103,40 @@ async def verify_otp_route(
     except Exception as e:
         print(f"REGISTER ERROR: {e}")   # ← this will show in terminal
         raise
+
+
+@router.post("/forgot-password")
+async def forgot_password_route(
+    payload: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    redis_client: Redis = Depends(get_redis)
+):
+    return await forgot_password(
+        payload,
+        db,
+        redis_client,
+        background_tasks
+    )
+
+@router.post("/verify-forgot-password-otp")
+async def verify_forgot_password_route(
+    payload: VerifyForgotPasswordOTPRequest,
+    redis_client: Redis = Depends(get_redis)
+):
+    return await verify_forgot_password(
+        payload,
+        redis_client
+    )
+
+@router.post("/reset-password")
+async def reset_password_route(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+    redis_client: Redis = Depends(get_redis)
+):
+    return await reset_password(
+        payload,
+        db,
+        redis_client
+    )
