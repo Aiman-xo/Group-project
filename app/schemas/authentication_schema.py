@@ -7,6 +7,7 @@ class CompanyRegister(BaseModel):
     website_link: str | None = None
     industry: str
     password: str
+    confirm_password: str
 
 
 class LoginRequest(BaseModel):
@@ -16,3 +17,15 @@ class LoginRequest(BaseModel):
 class OTPVerifyRequest(BaseModel):
     email: EmailStr
     otp: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class VerifyForgotPasswordOTPRequest(BaseModel):
+    email:EmailStr
+    otp:str
+
+class ResetPasswordRequest(BaseModel):
+    email:EmailStr
+    new_password:str
+    confirm_password: str
