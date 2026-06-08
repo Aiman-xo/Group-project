@@ -18,6 +18,9 @@ class OTPVerifyRequest(BaseModel):
     email: EmailStr
     otp: str
 
+class ResendOTPRequest(BaseModel):
+    email: EmailStr
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 

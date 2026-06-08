@@ -31,7 +31,28 @@ async def register_company(
     ).first()
 
     if existing_company:
-        raise HTTPException(status_code=400,detail='Email exists Try other one!')
+
+        if existing_company.is_verified:
+            raise HTTPException(
+                status_code=400,
+                detail="Email already registered"
+            )
+
+        # Not verified yet
+        otp = await generate_otp(
+            existing_company.email,
+            redis_client
+        )
+
+        await send_otp_email(
+            existing_company.email,
+            otp,
+            background_tasks
+        )
+
+        return {
+            "message": "Account exists but is not verified. New OTP sent."
+        }
 
     if company_data.password != company_data.confirm_password:
         raise HTTPException(
@@ -88,11 +109,15 @@ async def register_company(
 async def login_company(login_data:LoginRequest,db:Session,redis_client: Redis):
     company=db.query(Company).filter(Company.email==login_data.email).first()
     if not company:
-        return {"message":"Invalid Email and Password"}
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
     if not verify_password(login_data.password,company.password):
-        return{
-            "message":"Invalid Email and Password"
-        }
+         raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password"
+        )
     session_id = generate_session_id()
 
     access_token=create_access_token(
@@ -214,4 +239,76 @@ async def reset_password(
 
     return {
         "message":"Password updated successfully. Please login again."
+    }
+
+async def resend_otp(
+    email: str,
+    db: Session,
+    background_tasks: BackgroundTasks,
+    redis_client: Redis
+):
+    company = (
+        db.query(Company)
+        .filter(Company.email == email)
+        .first()
+    )
+
+    if not company:
+        raise HTTPException(
+            status_code=404,
+            detail="Account not found"
+        )
+
+    if company.is_verified:
+        raise HTTPException(
+            status_code=400,
+            detail="Account already verified"
+        )
+
+    otp = await generate_otp(
+        email,
+        redis_client
+    )
+
+    await send_otp_email(
+        email,
+        otp,
+        background_tasks
+    )
+
+    return {
+        "message": "OTP resent successfully"
+    }
+
+async def resend_forgot_password_otp(
+    email: str,
+    db: Session,
+    background_tasks: BackgroundTasks,
+    redis_client: Redis
+):
+    company = (
+        db.query(Company)
+        .filter(Company.email == email)
+        .first()
+    )
+
+    if not company:
+        raise HTTPException(
+            status_code=404,
+            detail="Account not found"
+        )
+
+    otp = await generate_forgot_password_otp(
+        email,
+        redis_client
+    )
+
+    await send_otp_email(
+        email,
+        otp,
+        background_tasks
+    )
+
+    return {
+        "message": "Password reset OTP resent successfully"
     }
