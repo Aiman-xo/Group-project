@@ -19,3 +19,6 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(
 
 OTP_EXPIRY = int(os.getenv('OTP_EXPIRY'))
 
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]

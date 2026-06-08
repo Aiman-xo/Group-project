@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from starlette.requests import Request
 
-from app.schemas.authentication_schema import CompanyRegister,LoginRequest,ForgotPasswordRequest,VerifyForgotPasswordOTPRequest,ResetPasswordRequest
-from app.service.authentication_service import register_company,login_company,forgot_password,verify_forgot_password,reset_password
+from app.schemas.authentication_schema import CompanyRegister,LoginRequest,ForgotPasswordRequest,VerifyForgotPasswordOTPRequest,ResetPasswordRequest,ResendOTPRequest
+from app.service.authentication_service import register_company,login_company,forgot_password,verify_forgot_password,reset_password,resend_otp,resend_forgot_password_otp
 from app.core.redis_config import get_redis
 from app.schemas.authentication_schema import OTPVerifyRequest
 from app.service.otp_service import verify_otp
@@ -138,5 +138,35 @@ async def reset_password_route(
     return await reset_password(
         payload,
         db,
+        redis_client
+    )
+
+@router.post("/resend-otp")
+@limiter.limit("5/minute")
+async def resend_otp_route(
+    request: Request,
+    payload: ResendOTPRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    redis_client: Redis = Depends(get_redis)
+):
+    return await resend_otp(
+        email=payload.email,
+        db=db,
+        background_tasks=background_tasks,
+        redis_client=redis_client
+    )
+
+@router.post("/resend-forgot-password-otp")
+async def resend_forgot_password_otp_route(
+    payload: ResendOTPRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    redis_client: Redis = Depends(get_redis)
+):
+    return await resend_forgot_password_otp(
+        payload.email,
+        db,
+        background_tasks,
         redis_client
     )
