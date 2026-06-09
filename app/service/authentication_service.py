@@ -9,6 +9,7 @@ from app.core.validators import validate_password_strength
 from app.service.otp_service import generate_otp,generate_forgot_password_otp,verify_forgot_password_otp
 from app.utils.email import send_otp_email
 from app.core.session import generate_session_id
+from app.core.url_utils import normalize_url
 
 
 from fastapi import BackgroundTasks,HTTPException,status
@@ -69,11 +70,15 @@ async def register_company(
         company_data.password
     )
 
+    website_link = normalize_url(
+        company_data.website_link
+    )
+
     # Save company
     new_company = Company(
         email=company_data.email,
         company_name=company_data.company_name,
-        website_link=company_data.website_link,
+        website_link=website_link,
         industry=company_data.industry,
         password=hashed_password,
         schema_name=None
