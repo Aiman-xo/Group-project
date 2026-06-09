@@ -3,6 +3,7 @@ import redis.asyncio as redis
 from contextlib import asynccontextmanager
 from app.core.redis_config import init_redis_pool,redis_pool
 from app.routes.authentication_routes import router as auth_router
+from app.routes.company_routes import router as company_router
 
 # Rate Limiting
 from slowapi import _rate_limit_exceeded_handler
@@ -34,3 +35,4 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.include_router(auth_router,prefix="/api/v1")
+app.include_router(company_router, prefix="/api/v1")
