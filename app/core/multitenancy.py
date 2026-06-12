@@ -4,6 +4,18 @@
 import os
 from alembic.config import Config
 from alembic import command
+from fastapi import Depends ,HTTPException
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import text
+
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+from app.core.security import verify_token
+from app.models.company_model import Company
+
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login"
+)
 
 def create_tenant_schema_tables(schema_name:str):
     """Programmatically runs 'alembic upgrade head' inside a specific schema"""
@@ -16,6 +28,34 @@ def create_tenant_schema_tables(schema_name:str):
     # Run the upgrade command to stamp all existing models into this new schema
     command.upgrade(alembic_cfg, "head")
 
+
+async def get_current_company(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    payload = verify_token(token)
+
+    company_id = payload["sub"]
+
+    company = db.query(Company).filter(
+        Company.id == company_id
+    ).first()
+
+    if not company:
+        raise HTTPException(
+            status_code=401,
+            detail="Company not found"
+        )
+
+    return company
+
+def set_tenant_schema(
+    db: Session,
+    schema_name: str
+):
+    db.execute(
+        text(f'SET search_path TO "{schema_name}"')
+    )
 
 # NOW IN THE REGISTRATION ROUTE WE NEED TO GIVE LIKE
 # =====================================================================

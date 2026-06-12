@@ -12,6 +12,8 @@ from app.core.session import generate_session_id
 
 
 from app.core.config import OTP_EXPIRY
+
+from app.utils.slug import generate_slug
   
 
 async def generate_otp(email: str, redis_client: redis.Redis):
@@ -78,7 +80,21 @@ async def verify_otp(email: str, otp: str, redis_client: redis.Redis,db: Session
     if company.is_verified:
         return {"message": "Account is already active. Proceed to login."}
     
-    safe_schema = f"tenant_{company.company_name.lower().replace(' ', '_')}"
+    # Generate slug
+    slug = generate_slug(company.company_name)
+
+    # Check duplicate slug
+    existing_slug = db.query(Company).filter(
+        Company.slug == slug
+    ).first()
+
+    if existing_slug:
+        slug = f"{slug}-{str(company.id)[:8]}"
+        
+    # Internal schema name
+    safe_schema = f"tenant_{slug.replace('-', '_')}"
+    
+    # safe_schema = f"tenant_{company.company_name.lower().replace(' ', '_')}"
     try:
         db.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{safe_schema}"'))
         db.commit()
@@ -94,7 +110,9 @@ async def verify_otp(email: str, otp: str, redis_client: redis.Redis,db: Session
     # 6. Activate the account
     company.is_verified = True
     company.schema_name = safe_schema
+    company.slug = slug
     db.commit()
+    db.refresh(company)
 
     # 7. Delete OTP from Redis so it cannot be reused (Replay attack defense)
     await redis_client.delete(f"otp:{email}", attempts_key)
@@ -126,7 +144,6 @@ async def verify_otp(email: str, otp: str, redis_client: redis.Redis,db: Session
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer",
-        "schema_name": safe_schema
     }
 
 async def generate_forgot_password_otp(email: str,redis_client: redis.Redis
