@@ -3,6 +3,7 @@
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+from jose import jwt, JWTError
 
 from app.core.config import (
     SECRET_KEY,
@@ -65,3 +66,17 @@ def create_refresh_token(data: dict):
 def verify_password(plain_password:str,hashed_password:str):
     return pwd_context.verify(plain_password,hashed_password)
     
+def verify_token(token: str):
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+        return payload
+
+    except JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token"
+        )

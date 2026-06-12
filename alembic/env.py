@@ -1,6 +1,6 @@
 from logging.config import fileConfig
 from dotenv import load_dotenv
-from app.core.database import Base
+from app.core.database import PublicBase,TenantBase
 import app.models
 
 from sqlalchemy import engine_from_config
@@ -29,13 +29,35 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = Base.metadata
+
+x_args = context.get_x_argument(as_dictionary=True)
+if not x_args:
+    x_opt = config.get_main_option("x")
+    if x_opt:
+        x_args = {}
+        for arg in x_opt.split():
+            k, _, v = arg.partition("=")
+            x_args[k] = v
+
+tenant_schema = x_args.get("tenant") if isinstance(x_args, dict) else None
+
+if tenant_schema:
+    target_metadata = TenantBase.metadata
+else:
+    target_metadata = PublicBase.metadata
+
+print("TABLES:")
+for table in target_metadata.tables.keys():
+    print(table)
 
 def include_object(object, name, type_, reflected, compare_to):
     if tenant_schema and tenant_schema != "public":
         # If migrating an isolated tenant, block the shared 'companies' table
         if type_ == "table" and name == "companies":
             return False
+    print(
+        f"type={type_}, name={name}, tenant={tenant_schema}"
+    )
     return True
 
 # other values from the config, defined by the needs of env.py,
@@ -67,16 +89,7 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
-x_args = context.get_x_argument(as_dictionary=True)
-if not x_args:
-    x_opt = config.get_main_option("x")
-    if x_opt:
-        x_args = {}
-        for arg in x_opt.split():
-            k, _, v = arg.partition("=")
-            x_args[k] = v
 
-tenant_schema = x_args.get("tenant") if isinstance(x_args, dict) else None
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
