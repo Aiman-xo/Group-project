@@ -147,7 +147,6 @@ async def login_company(login_data:LoginRequest,db:Session,redis_client: Redis):
         "access_token":access_token,
         "refresh_token":refresh_token,
         "token_type":"bearer",
-        "schema_name":company.schema_name
     }
 
 

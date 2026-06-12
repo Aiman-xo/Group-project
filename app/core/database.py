@@ -10,7 +10,10 @@ sessionLocal = sessionmaker(
     bind=engine
 )
 
-Base = declarative_base()
+# Base = declarative_base()
+PublicBase = declarative_base()
+
+TenantBase = declarative_base()
 
 def get_db():
     db=sessionLocal()
