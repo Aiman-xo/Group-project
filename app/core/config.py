@@ -21,4 +21,5 @@ OTP_EXPIRY = int(os.getenv('OTP_EXPIRY'))
 
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "*.lvh.me:5173"
 ]
