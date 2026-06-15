@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 import redis.asyncio as redis
+import logging
 from contextlib import asynccontextmanager
 from app.core.redis_config import init_redis_pool,redis_pool
 from app.routes.authentication_routes import router as auth_router
@@ -11,6 +12,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.limiter import limiter
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import ALLOWED_ORIGINS
+
 
 @asynccontextmanager
 async def lifespan(app:FastAPI):
@@ -26,6 +28,7 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https?://([a-z0-9-]+)\.(lvh\.me|yourproduct\.com)(:\d+)?", # added this to allow coming from the origin like lvh.me:8000
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

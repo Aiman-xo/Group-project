@@ -19,8 +19,8 @@ oauth2_scheme = OAuth2PasswordBearer(
 
 def create_tenant_schema_tables(schema_name:str):
     """Programmatically runs 'alembic upgrade head' inside a specific schema"""
-    # Point to your local alembic.ini file
-    alembic_cfg = Config("alembic.ini")
+    # Point to your local alembic_tenant.ini file
+    alembic_cfg = Config("alembic_tenant.ini")
     
     # Pass the custom schema name as an alembic -x argument dynamically!
     alembic_cfg.set_main_option("x", f"tenant={schema_name}")
@@ -49,13 +49,27 @@ async def get_current_company(
 
     return company
 
-def set_tenant_schema(
-    db: Session,
-    schema_name: str
+
+# This is the middleware or Dependency that validates the JWT to tenant name are match. like when a company authenticate and this prevent form acessing other 
+# tenants data. so how this works is that it gets the current company which is authenticated by get_current_company this dependency. and then gets the current
+# schema_name by the SQL query to SHOW the search_path which is set at the time of registration. and if everything correct returns the tenant db.
+from fastapi import status
+from app.core.database import get_tenant_db
+
+async def get_authorized_tenant_db(
+    current_company: Company = Depends(get_current_company),
+    db: Session = Depends(get_tenant_db)
 ):
-    db.execute(
-        text(f'SET search_path TO "{schema_name}"')
-    )
+    current_schema_result = db.execute(text("SHOW search_path")).fetchone()
+    current_schema = current_schema_result[0] if current_schema_result else ""
+    
+    if not current_schema.startswith(f'"{current_company.schema_name}"') and not current_schema.startswith(current_company.schema_name):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this workspace."
+        )
+    return db
+
 
 # NOW IN THE REGISTRATION ROUTE WE NEED TO GIVE LIKE
 # =====================================================================
