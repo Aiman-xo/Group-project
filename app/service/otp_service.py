@@ -123,14 +123,16 @@ async def verify_otp(email: str, otp: str, redis_client: redis.Redis,db: Session
 
     access_token = create_access_token(
         data={
-            "sub": str(company.id)  #i changed email to id for consistency bcz email can changeble
+            "sub": str(company.id), #i changed email to id for consistency bcz email can changeble
+            "slug":str(company.slug) 
         }
     )
 
     refresh_token = create_refresh_token(
         data={
             "sub": str(company.id),  #i changed email to id for consistency bcz email can changeble
-            "session_id": session_id
+            "session_id": session_id,
+            "slug":str(company.slug) 
         }
     )
     await redis_client.set(
