@@ -78,5 +78,6 @@ class CrawlAgent:
             "title": title,
             "meta_description": description,
             "headings": headings[:20],
-            "links": links[:50]
+            "links": links[:50],
+            "html": html
         }
