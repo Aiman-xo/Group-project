@@ -27,6 +27,17 @@ class URLClassifier:
         "/ja/",
         "/ko/",
         "/zh/",
+        ".zip",
+        ".exe",
+        ".msi",
+        ".msix",
+        ".tar",
+        ".tar.gz",
+        ".gz",
+        ".pkg",
+        ".dmg",
+        ".deb",
+        ".rpm",
     ]
 
     def classify(self, url: str):

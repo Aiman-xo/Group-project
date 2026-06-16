@@ -8,7 +8,7 @@ class CrawlerService:
         self.classifier = URLClassifier()
     def crawl_site(self, start_url):
 
-        MAX_PAGES = 100
+        MAX_PAGES = 50
 
         queue = [start_url]
         results = []
