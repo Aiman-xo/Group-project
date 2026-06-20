@@ -1,8 +1,9 @@
 import pyotp
 import redis.asyncio as redis
-from fastapi import HTTPException,status
+from fastapi import HTTPException,status,BackgroundTasks
 from sqlalchemy.orm import Session
 from app.models.company_model import Company
+from app.service.background_tasks import run_background_crawler_pipeline
 
 from app.core.multitenancy import create_tenant_schema_tables
 from app.core.security import create_access_token,create_refresh_token
@@ -33,7 +34,7 @@ async def generate_otp(email: str, redis_client: redis.Redis):
     return otp
 
 
-async def verify_otp(email: str, otp: str, redis_client: redis.Redis,db: Session):
+async def verify_otp(email: str, otp: str, redis_client: redis.Redis,db: Session,background_tasks: BackgroundTasks):
     """
     Verifies the OTP for the given email.
     """
@@ -113,6 +114,20 @@ async def verify_otp(email: str, otp: str, redis_client: redis.Redis,db: Session
     company.slug = slug
     db.commit()
     db.refresh(company)
+
+    # --- 🚀 TRIGGER THE ASYNC CRAWLER AUTOMATICALLY HERE ---
+
+    # We build the company workspace folder name dynamically using the fresh slug
+
+    workspace_id = f"company_{company.slug}"
+
+    background_tasks.add_task(
+        run_background_crawler_pipeline,
+        company_id=workspace_id,
+        company_name=company.company_name,
+        website_url=company.website_link,
+        is_competitor=False  # Tells it to store data inside /admin/
+    )
 
     # 7. Delete OTP from Redis so it cannot be reused (Replay attack defense)
     await redis_client.delete(f"otp:{email}", attempts_key)

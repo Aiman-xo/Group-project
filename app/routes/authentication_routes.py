@@ -20,6 +20,35 @@ router=APIRouter(
 )
 
 
+# @router.post("/register", status_code=status.HTTP_200_OK)
+# async def register(
+#     company: CompanyRegister,
+#     response: Response,
+#     background_tasks: BackgroundTasks,
+#     db: Session = Depends(get_db),
+#     redis_client: Redis = Depends(get_redis)
+# ):
+    
+#     result = await register_company(
+#         company_data=company,
+#         db=db,
+#         background_tasks=background_tasks,
+#         redis_client=redis_client
+#     )
+
+#     if "refresh_token" in result:
+#         response.set_cookie(
+#             key="refresh_token",
+#             value=result["refresh_token"],
+#             httponly=True,
+#             secure=False,      # localhost
+#             samesite="lax",
+#             max_age=60 * 60 * 24 * 7
+#         )
+
+#         del result["refresh_token"]
+
+#     return result
 @router.post("/register", status_code=status.HTTP_200_OK)
 async def register(
     company: CompanyRegister,
@@ -28,28 +57,17 @@ async def register(
     db: Session = Depends(get_db),
     redis_client: Redis = Depends(get_redis)
 ):
-    
-    result = await register_company(
+    """
+    Initial registration step. Registers the company metadata, creates an unverified profile,
+    and handles sending out the OTP verification mailer.
+    """
+    # Cleaned up: Removed the dead token check block since register_company never returns a token
+    return await register_company(
         company_data=company,
         db=db,
         background_tasks=background_tasks,
         redis_client=redis_client
     )
-
-    if "refresh_token" in result:
-        response.set_cookie(
-            key="refresh_token",
-            value=result["refresh_token"],
-            httponly=True,
-            secure=False,      # localhost
-            samesite="lax",
-            max_age=60 * 60 * 24 * 7
-        )
-
-        del result["refresh_token"]
-
-    return result
-
 
 
 @router.post("/login", status_code=status.HTTP_200_OK)
@@ -82,11 +100,38 @@ async def login(
     return result
 
 
+# @router.post("/verify-otp", status_code=status.HTTP_200_OK)
+# @limiter.limit("5/minute")
+# async def verify_otp_route(
+#     request: Request,
+#     payload: OTPVerifyRequest,
+#     response: Response,                 # <-- Added to handle HTTP-only cookie assignment
+#     background_tasks: BackgroundTasks,
+#     db: Session = Depends(get_db),
+#     redis_client: Redis = Depends(get_redis)
+# ):
+#     """
+#     Endpoint to verify a registration OTP and activate a multi-tenant business account.
+#     """
+#     try:
+#         return await verify_otp(
+#             email=payload.email, 
+#             otp=payload.otp, 
+#             redis_client=redis_client, 
+#             db=db
+#             background_tasks=background_tasks
+#         )
+#     except Exception as e:
+#         print(f"REGISTER ERROR: {e}")   # ← this will show in terminal
+#         raise
+
 @router.post("/verify-otp", status_code=status.HTTP_200_OK)
 @limiter.limit("5/minute")
 async def verify_otp_route(
     request: Request,
     payload: OTPVerifyRequest,
+    response: Response,                 # Handles HTTP-only cookie assignment
+    background_tasks: BackgroundTasks,   # Manages the background task pool handover
     db: Session = Depends(get_db),
     redis_client: Redis = Depends(get_redis)
 ):
@@ -94,14 +139,32 @@ async def verify_otp_route(
     Endpoint to verify a registration OTP and activate a multi-tenant business account.
     """
     try:
-        return await verify_otp(
+        # Await verification service layer (Passed background_tasks down successfully)
+        result = await verify_otp(
             email=payload.email, 
             otp=payload.otp, 
             redis_client=redis_client, 
-            db=db
+            db=db,
+            background_tasks=background_tasks  # Fixed missing comma from your snippet
         )
+
+        # Intercept the generated refresh token, assign to HTTP-only cookie, and strip from public JSON
+        if "refresh_token" in result:
+            response.set_cookie(
+                key="refresh_token",
+                value=result["refresh_token"],
+                httponly=True,
+                secure=False,      # Set to True when moving to production HTTPS
+                samesite="lax",
+                max_age=60 * 60 * 24 * 7
+            )
+            # Remove from response dictionary so Flutter client never sees it in the open body
+            del result["refresh_token"]
+
+        return result
+
     except Exception as e:
-        print(f"REGISTER ERROR: {e}")   # ← this will show in terminal
+        print(f"REGISTER ERROR: {e}")   # Appears cleanly in your terminal log streams
         raise
 
 
