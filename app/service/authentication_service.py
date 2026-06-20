@@ -16,7 +16,7 @@ from fastapi import BackgroundTasks,HTTPException,status
 from redis.asyncio import Redis
 
 import traceback
-
+from app.core.logger import logger
 
 
 async def register_company(
@@ -74,7 +74,18 @@ async def register_company(
         company_data.website_link
     )
 
+    from app.utils.slug import generate_slug
+    slug = generate_slug(company_data.company_name)
+    if slug in {"www", "api", "admin", "app", "help", "support", "static"}:
+        raise HTTPException(
+            status_code=400,
+            detail="This company name is reserved. Please choose another name."
+        )
+
     # Save company
+    # Note: slug is intentionally NOT saved here. It is assigned
+    # definitively during OTP verification (otp_service.py) where
+    # uniqueness conflict is also handled safely with a UUID suffix fallback.
     new_company = Company(
         email=company_data.email,
         company_name=company_data.company_name,
@@ -114,11 +125,13 @@ async def register_company(
 async def login_company(login_data:LoginRequest,db:Session,redis_client: Redis):
     company=db.query(Company).filter(Company.email==login_data.email).first()
     if not company:
+        logger.warning(f"company not found! {login_data.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
     if not verify_password(login_data.password,company.password):
+         logger.warning(f"Invalid password for {login_data.email}")
          raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
@@ -127,13 +140,15 @@ async def login_company(login_data:LoginRequest,db:Session,redis_client: Redis):
 
     access_token=create_access_token(
         data={
-            "sub": str(company.id)  #i changed email to id for consistency bcz email can changeble
+            "sub": str(company.id),  #i changed email to id for consistency bcz email can changeble
+            "slug":str(company.slug) 
         }
     )
     refresh_token = create_refresh_token(
         data={
             "sub": str(company.id),  #i changed email to id for consistency bcz email can changeble
-            "session_id": session_id
+            "session_id": session_id,
+            "slug":str(company.slug) 
         }
     )
     await redis_client.set(
