@@ -5,7 +5,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool, text
 
 # Import your database base and tenant models
-from app.core.database import TenantBase
+from app.core.database import TenantBase,PublicBase
 import app.models # ensure Competitor, CompanyProfile are imported
 
 load_dotenv()
@@ -20,6 +20,16 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = TenantBase.metadata
+
+PUBLIC_TABLES = set(PublicBase.metadata.tables.keys())
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table":
+        if name in PUBLIC_TABLES:
+            return False
+        if getattr(object, "schema", None) == "public":
+            return False
+    return True
 
 # Retrieve the dynamically passed schema name
 x_args = context.get_x_argument(as_dictionary=True)
@@ -58,16 +68,29 @@ def run_migrations_online() -> None:
             # 1. Create the schema physically
             connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{tenant_schema}"'))
             # 2. Scope this session to the tenant's schema
-            connection.execute(text(f'SET search_path TO "{tenant_schema}"'))
+            connection.execute(text(f'SET search_path TO "{tenant_schema}"'))  #================================================================================
             connection.commit()
             
             # 3. Block Alembic from reading 'public' metadata
-            connection.dialect.default_schema_name = tenant_schema
+            # connection.dialect.default_schema_name = tenant_schema
 
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             version_table_schema=tenant_schema, # Save the alembic_version table inside the tenant schema
+            include_object=include_object,
+
+            include_schemas=True,
+            # Without this, Alembic only looks at the default schema
+            # It won't properly scope reflection to your tenant schema
+
+            include_name=lambda name, type_, parent_names: name == tenant_schema,
+            # Without this, Alembic reflects ALL schemas it can see
+            # So tenant_testing_1 could see tenant_testing_2's tables
+
+            compare_type=True,
+            # Without this, if you change String(100) → String(255)
+            # Alembic silently ignores it, migration never gets generated 
         )
 
         with context.begin_transaction():

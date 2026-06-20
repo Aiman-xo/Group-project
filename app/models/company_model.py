@@ -1,6 +1,8 @@
-from app.core.database import PublicBase
-from sqlalchemy import Column,String,Integer,Boolean
+from app.core.database import PublicBase,TenantBase
+from sqlalchemy import Column,String,Integer,Boolean,ForeignKey,ARRAY,Text,DateTime
+from datetime import datetime,timezone
 from sqlalchemy.dialects.postgresql import UUID
+
 import uuid
 
 class Company(PublicBase):
@@ -25,3 +27,36 @@ class Company(PublicBase):
     slug = Column(String, unique=True, nullable=True)
 
     is_verified:bool = Column(Boolean,default=False,nullable=False,server_default="false")
+
+
+class ProfileDataAnalyser(TenantBase):
+    __tablename__ = 'company_profile_datas'
+
+    id = Column(UUID(as_uuid=True),unique=True, primary_key=True,nullable=False,default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True),nullable=True)
+
+    source_file = Column(String,nullable=False)
+    services = Column(ARRAY(Text),nullable=True)
+    products = Column(ARRAY(Text),nullable=True)
+    tech_stacks = Column(ARRAY(Text),nullable=True)
+    github = Column(String,nullable=True)
+    linkedin = Column(String,nullable=True)
+    youtube = Column(String,nullable=True)
+    facebook = Column(String,nullable=True)
+    email = Column(String(255),nullable=True)
+    phone = Column(String(20),nullable=True)
+    summary_text = Column(Text,nullable=True)
+    
+    # versions for storing the data only when there is change and we can track the version.
+    version = Column(Integer,nullable=False,default=0)
+    is_latest = Column(Boolean,default=False)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
+    )

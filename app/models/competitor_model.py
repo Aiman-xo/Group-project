@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Text, DateTime, Boolean
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime
+from datetime import datetime,timezone
 import uuid
 from app.core.database import TenantBase
 
@@ -44,13 +45,14 @@ class Competitor(TenantBase):
         default=True
     )
 
-    created_at = Column(
-        DateTime,
-        default=datetime.utcnow
-    )
+    slug = Column(String, unique=True, nullable=True)
 
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
     updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
     )

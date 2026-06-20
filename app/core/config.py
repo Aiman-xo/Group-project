@@ -16,6 +16,8 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(
     os.getenv("REFRESH_TOKEN_EXPIRE_DAYS")
 )
 
+GROQ_API_KEY = str(os.getenv('GROQ_API_KEY'))
+
 
 OTP_EXPIRY = int(os.getenv('OTP_EXPIRY'))
 
