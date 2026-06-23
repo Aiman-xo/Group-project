@@ -1,5 +1,6 @@
 # Python cache
 __pycache__/
+**/__pycache__/
 *.py[cod]
 
 # Virtual environment
@@ -14,6 +15,16 @@ env/
 
 # Pytest
 .pytest_cache/
+
+# Alembic cache (important because I see it inside alembic_tenant)
+alembic_tenant/__pycache__/
+
+# Celery beat files
+celerybeat-schedule*
+celerybeat-schedule
+*.bak
+*.dat
+*.dir
 
 # OS files
 .DS_Store
