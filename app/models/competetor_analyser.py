@@ -1,40 +1,17 @@
-from app.core.database import PublicBase,TenantBase
-from sqlalchemy import Column,String,Integer,Boolean,ForeignKey,ARRAY,Text,DateTime
-from datetime import datetime,timezone
+from sqlalchemy import String,Column,Integer,Text,ForeignKey,ARRAY,DateTime,Boolean
+from app.core.database import TenantBase
 from sqlalchemy.dialects.postgresql import UUID
-
+from sqlalchemy.orm import relationship
+from datetime import datetime,timezone
 import uuid
 
-class Company(PublicBase):
-    __tablename__ = 'companies'
-    __table_args__ = {"schema": "public"}
 
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        unique=True,
-        nullable=False,
-        default=uuid.uuid4
-    )
-    email:str = Column(String,unique=True,index=True,nullable=False)
-    company_name:str = Column(String,nullable=False)
-    website_link:str = Column(String,nullable=True)
-    industry:str = Column(String,nullable=False)
-    password:str = Column(String,nullable=False)
-
-    schema_name = Column(String, unique=True, nullable=True)
-
-    slug = Column(String, unique=True, nullable=True)
-
-    is_verified:bool = Column(Boolean,default=False,nullable=False,server_default="false")
-
-
-class ProfileDataAnalyser(TenantBase):
-    __tablename__ = 'company_profile_datas'
+class CompetetorAnalyser(TenantBase):
+    __tablename__ = 'competitor_analyses'
 
     id = Column(UUID(as_uuid=True),unique=True, primary_key=True,nullable=False,default=uuid.uuid4)
-    company_id = Column(UUID(as_uuid=True),nullable=True)
-
+    competitor_id = Column(UUID(as_uuid=True),ForeignKey('competitors.id'),nullable=True)
+    competitor_name = Column(String,nullable=True)
     source_file = Column(String,nullable=True)
     services = Column(ARRAY(Text),nullable=True)
     products = Column(ARRAY(Text),nullable=True)

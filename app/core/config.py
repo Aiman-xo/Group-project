@@ -21,6 +21,13 @@ GROQ_API_KEY = str(os.getenv('GROQ_API_KEY'))
 
 OTP_EXPIRY = int(os.getenv('OTP_EXPIRY'))
 
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_REGION = str(os.getenv('AWS_REGION'))
+AWS_STORAGE_BUCKET_NAME = str(os.getenv('AWS_STORAGE_BUCKET_NAME'))
+S3_BUCKET_NAME = AWS_STORAGE_BUCKET_NAME
+SQS_QUEUE_URL = os.getenv('SQS_QUEUE_URL')
+
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "*.lvh.me:5173"

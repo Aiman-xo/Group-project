@@ -13,6 +13,9 @@ from app.core.limiter import limiter
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import ALLOWED_ORIGINS
 
+#Celery
+from app.core.celery_config import celery_app
+
 
 @asynccontextmanager
 async def lifespan(app:FastAPI):
