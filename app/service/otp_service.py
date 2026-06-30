@@ -115,7 +115,7 @@ async def verify_otp(email: str, otp: str, redis_client: redis.Redis,db: Session
     db.commit()
     db.refresh(company)
 
-    # --- 🚀 TRIGGER THE ASYNC CRAWLER AUTOMATICALLY HERE ---
+    # --- TRIGGER THE ASYNC CRAWLER AUTOMATICALLY HERE ---
 
     # We build the company workspace folder name dynamically using the fresh slug
 
