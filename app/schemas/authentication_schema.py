@@ -1,4 +1,5 @@
 from pydantic import BaseModel,EmailStr
+from typing import Optional
 
 class CompanyRegister(BaseModel):
 
@@ -17,6 +18,9 @@ class LoginRequest(BaseModel):
 class OTPVerifyRequest(BaseModel):
     email: EmailStr
     otp: str
+    
+class RefreshTokenRequest(BaseModel):
+    refresh_token: Optional[str] = None
 
 class ResendOTPRequest(BaseModel):
     email: EmailStr

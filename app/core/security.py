@@ -4,6 +4,7 @@ from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
+from fastapi import HTTPException
 
 from app.core.config import (
     SECRET_KEY,
