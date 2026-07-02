@@ -1,11 +1,11 @@
 import os
-from app.agents.google_agent import GoogleAgent
+from app.agents.google_agent import GoogleReviewAgent
 from app.agents.reddit_agent import RedditAgent
 from app.utils.s3_uploader import S3Uploader
 
 class IntelService:
     def __init__(self):
-        self.google_agent = GoogleAgent()
+        self.google_agent = GoogleReviewAgent()
         self.reddit_agent = RedditAgent()
         self.s3_storage = S3Uploader()
 
@@ -26,9 +26,12 @@ class IntelService:
         print(f"  [+] Target Data Lake Path: company/{main_company_id}/{folder_segment}/")
         
         # 1. Process Google Places Integration
-        google_data = self.google_agent.fetch_reviews(target_name)
+        google_json_data = self.google_agent.extract_summary(target_name)
+        
+        import json
+        google_data_str = json.dumps(google_json_data, indent=4)
         google_s3_key = f"company/{main_company_id}/{folder_segment}/review_and_rating.txt"
-        self.s3_storage.upload_string_to_s3(google_data, google_s3_key)
+        self.s3_storage.upload_string_to_s3(google_data_str, google_s3_key)
             
         # 2. Process Reddit Intelligence Extraction
         reddit_data = self.reddit_agent.fetch_leaks(target_name)
