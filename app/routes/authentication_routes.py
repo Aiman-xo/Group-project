@@ -4,7 +4,7 @@ from app.core.database import get_db
 from starlette.requests import Request
 
 from app.schemas.authentication_schema import CompanyRegister,LoginRequest,ForgotPasswordRequest,VerifyForgotPasswordOTPRequest,ResetPasswordRequest,ResendOTPRequest
-from app.service.authentication_service import register_company,login_company,forgot_password,verify_forgot_password,reset_password,resend_otp,resend_forgot_password_otp
+from app.service.authentication_service import register_company,login_company,forgot_password,verify_forgot_password,reset_password,resend_otp,resend_forgot_password_otp,refresh_access_token
 from app.core.redis_config import get_redis
 from app.schemas.authentication_schema import OTPVerifyRequest
 from app.service.otp_service import verify_otp
@@ -12,6 +12,7 @@ from app.service.otp_service import verify_otp
 from app.core.limiter import limiter
 
 from redis.asyncio import Redis
+from app.schemas.authentication_schema import RefreshTokenRequest
 
 
 router=APIRouter(
@@ -74,6 +75,7 @@ async def register(
 async def login(
     login_data: LoginRequest,
     response: Response,
+    request:Request,
     db: Session = Depends(get_db),
     redis_client: Redis = Depends(get_redis)
 ):
@@ -84,7 +86,9 @@ async def login(
         redis_client
     )
 
-    if "refresh_token" in result:
+    client_type = request.headers.get("X-Client-Type", "web")
+
+    if "refresh_token" in result and client_type != "mobile":
         response.set_cookie(
             key="refresh_token",
             value=result["refresh_token"],
@@ -148,8 +152,10 @@ async def verify_otp_route(
             background_tasks=background_tasks  # Fixed missing comma from your snippet
         )
 
+        client_type = request.headers.get("X-Client-Type", "web")
+
         # Intercept the generated refresh token, assign to HTTP-only cookie, and strip from public JSON
-        if "refresh_token" in result:
+        if "refresh_token" in result and client_type != "mobile":
             response.set_cookie(
                 key="refresh_token",
                 value=result["refresh_token"],
@@ -167,6 +173,48 @@ async def verify_otp_route(
         print(f"REGISTER ERROR: {e}")   # Appears cleanly in your terminal log streams
         raise
 
+# ============================================================= Refresh Route ==================================================================================
+
+# routes/auth.py
+@router.post("/refresh", status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")
+async def refresh_token_route(
+    request: Request,
+    response: Response,
+    payload: RefreshTokenRequest,
+    redis_client: Redis = Depends(get_redis)
+):
+    """
+    Issues a new access token + rotates the refresh token.
+    Web clients: refresh token read from / written to httpOnly cookie.
+    Mobile (Flutter) clients: refresh token read from / written to JSON body.
+    """
+    cookie_token = request.cookies.get("refresh_token")
+    client_type = request.headers.get("X-Client-Type", "web")
+
+    result = await refresh_access_token(
+        cookie_token=cookie_token,
+        body_token=payload.refresh_token,
+        redis_client=redis_client
+    )
+
+    if client_type == "mobile":
+        # Refresh token stays in the body - Flutter overwrites its
+        # flutter_secure_storage entry with this new value.
+        return result
+    else:
+        response.set_cookie(
+            key="refresh_token",
+            value=result["refresh_token"],
+            httponly=True,
+            secure=False,      # flip to True in prod
+            samesite="lax",    # flip to "none" in prod (cross-origin Azure/Vercel)
+            max_age=60 * 60 * 24 * 7
+        )
+        del result["refresh_token"]
+        return result
+
+# ============================================================= Refresh Route Ends ===============================================================================
 
 @router.post("/forgot-password")
 async def forgot_password_route(

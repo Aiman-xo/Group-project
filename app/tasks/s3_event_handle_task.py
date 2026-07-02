@@ -64,6 +64,12 @@ def handle_s3_event_trigger(self,message_body:str):
 
         if arrived >= expected:
             # acquire lock — only one worker can win this
+            # Lock is needed here because:
+            # When file 3 arrives, TWO workers might BOTH see count=3
+            # at the exact same millisecond and BOTH try to trigger ETL.
+            # nx=True ensures only the FIRST worker that reaches here
+            # can trigger ETL — the second worker gets None and skips.
+            # This prevents duplicate ETL runs for the same company.
             lock_acquired = r.set(lock_key, "locked", nx=True, ex=60)
 
             if lock_acquired:
