@@ -50,7 +50,7 @@ async def discover_competitors(
         if not content:
             continue
 
-        gemini_response = extract_company_names(
+        groq_response = extract_company_names(
             content=content,
             industry=industry,
             country=country,
@@ -60,7 +60,7 @@ async def discover_competitors(
         )
 
         companies = parse_company_response(
-            gemini_response
+            groq_response
         )
         print(f"\nCompanies extracted from {query}:")
         print(companies)
