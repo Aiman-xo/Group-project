@@ -17,6 +17,9 @@ from app.core.config import ALLOWED_ORIGINS
 #Celery
 from app.core.celery_config import celery_app
 
+from app.routes.crawling_progress_routes import router as progress_router
+from app.routes.progress_ws_routes import router as progress_ws_router
+
 
 @asynccontextmanager
 async def lifespan(app:FastAPI):
@@ -44,3 +47,5 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(auth_router,prefix="/api/v1")
 app.include_router(company_router, prefix="/api/v1")
 app.include_router(website_url_router, prefix="/api/v1")
+app.include_router(progress_router, prefix="/api/v1")
+app.include_router(progress_ws_router, prefix="/api/v1")

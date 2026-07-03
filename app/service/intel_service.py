@@ -2,6 +2,7 @@ import os
 from app.agents.google_agent import GoogleReviewAgent
 from app.agents.reddit_agent import RedditAgent
 from app.utils.s3_uploader import S3Uploader
+from app.utils.progress_tracker import update_progress
 
 class IntelService:
     def __init__(self):
@@ -24,6 +25,8 @@ class IntelService:
             
         print(f"\n  [+] Executing External Scrapers for: {target_name} ({target_url if target_url else 'No URL Required'})")
         print(f"  [+] Target Data Lake Path: company/{main_company_id}/{folder_segment}/")
+
+        update_progress(main_company_id, 85, "Fetching Google reviews")
         
         # 1. Process Google Places Integration
         google_json_data = self.google_agent.extract_summary(target_name)
@@ -32,10 +35,17 @@ class IntelService:
         google_data_str = json.dumps(google_json_data, indent=4)
         google_s3_key = f"company/{main_company_id}/{folder_segment}/review_and_rating.txt"
         self.s3_storage.upload_string_to_s3(google_data_str, google_s3_key)
+
+        update_progress(main_company_id, 95, "Fetching Reddit intelligence")
             
         # 2. Process Reddit Intelligence Extraction
         reddit_data = self.reddit_agent.fetch_leaks(target_name)
+
+        
+
         reddit_s3_key = f"company/{main_company_id}/{folder_segment}/pricing_and_leaks.txt"
         self.s3_storage.upload_string_to_s3(reddit_data, reddit_s3_key)
+
+        update_progress(main_company_id, 98, "Reddit and google intelligence completed")
         
         print(f"    [✓] All target data files safely streamed to S3 bucket location.")
