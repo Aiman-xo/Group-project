@@ -18,5 +18,6 @@ def update_progress(company_id: str, progress: int, status: str):
     redis_client.set(
         key,
         json.dumps(payload),
-        ex=3600   # auto delete after 1 hour
+        # ex=3600   # auto delete after 1 hour
+        ex=120
     )
