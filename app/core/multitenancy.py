@@ -62,6 +62,7 @@ async def get_authorized_tenant_db(
 ):
     current_schema_result = db.execute(text("SHOW search_path")).fetchone()
     current_schema = current_schema_result[0] if current_schema_result else ""
+    print(current_schema,'============>>>>>>')
     
     if not current_schema.startswith(f'"{current_company.schema_name}"') and not current_schema.startswith(current_company.schema_name):
         raise HTTPException(
