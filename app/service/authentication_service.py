@@ -10,6 +10,7 @@ from app.service.otp_service import generate_otp,generate_forgot_password_otp,ve
 from app.utils.email import send_otp_email
 from app.core.session import generate_session_id
 from app.core.url_utils import normalize_url
+from app.core.config import SECRET_KEY, ALGORITHM
 
 
 from fastapi import BackgroundTasks,HTTPException,status
@@ -17,6 +18,10 @@ from redis.asyncio import Redis
 
 import traceback
 from app.core.logger import logger
+
+from jose import jwt, JWTError, ExpiredSignatureError
+from typing import Optional
+
 
 
 async def register_company(
@@ -163,6 +168,101 @@ async def login_company(login_data:LoginRequest,db:Session,redis_client: Redis):
         "refresh_token":refresh_token,
         "token_type":"bearer",
     }
+
+# =================================== Refresh Access token ===================================================================
+
+async def revoke_all_sessions(company_id: str, redis_client: Redis):
+    """
+    Wipes every active session for a company.
+    Used when reuse of a rotated-out refresh token is detected (theft signal),
+    or can be called explicitly for a 'logout everywhere' feature.
+    """
+    pattern = f"refresh:{company_id}:*"
+    async for key in redis_client.scan_iter(match=pattern):
+        await redis_client.delete(key)
+
+
+# Designed for both the request coming from App and Web
+async def refresh_access_token(
+    cookie_token: Optional[str], # coming from web
+    body_token: Optional[str], # coming from flutter app
+    redis_client: Redis
+):
+    token = cookie_token or body_token
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token missing"
+        )
+
+    # 1. Verify JWT signature + expiry
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    company_id = payload.get("sub")
+    session_id = payload.get("session_id")
+    slug = payload.get("slug")
+
+    if not company_id or not session_id:
+        raise HTTPException(status_code=401, detail="Malformed refresh token")
+
+    redis_key = f"refresh:{company_id}:{session_id}"
+
+    # 2. Look up this session in Redis
+    stored_token = await redis_client.get(redis_key)
+
+    if not stored_token:
+        # Token's JWT is valid but session doesn't exist in Redis anymore.
+        # Either naturally expired (rare, TTLs match) or reuse of an already-rotated token.
+        # Treat as theft - kill every session for this company.
+        await revoke_all_sessions(company_id, redis_client)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session invalid or reused. Please log in again."
+        )
+
+    stored_token_str = stored_token.decode() if isinstance(stored_token, bytes) else stored_token
+
+    if stored_token_str != token:
+        # Extra safety check - stored value doesn't match presented token
+        await revoke_all_sessions(company_id, redis_client)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session invalid or reused. Please log in again."
+        )
+
+    # 3. Valid - rotate: delete old session key, issue new tokens + new session_id
+    await redis_client.delete(redis_key)
+
+    new_session_id = generate_session_id()
+
+    new_access_token = create_access_token(
+        data={"sub": str(company_id), "slug": str(slug)}
+    )
+    new_refresh_token = create_refresh_token(
+        data={"sub": str(company_id), "session_id": new_session_id, "slug": str(slug)}
+    )
+
+    await redis_client.set(
+        f"refresh:{company_id}:{new_session_id}",
+        new_refresh_token,
+        ex=60 * 60 * 24 * 7
+    )
+
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer"
+    }
+
+
+# ==============================================================================================================================
+
 
 
 async def forgot_password(

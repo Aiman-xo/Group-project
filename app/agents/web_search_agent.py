@@ -84,26 +84,29 @@ def build_queries(
 
     queries = []
 
+    
+    def add_queries(location: str):
+        if not location:
+            return
+
+        queries.extend([
+            f"Top {limit} {industry} organizations in {location}",
+            f"Top {limit} {industry} companies in {location}",
+            f"{industry} companies in {location}",
+            f"Best {industry} companies in {location}",
+            f"Leading {industry} companies in {location}",
+        ])
+
     if district:
-        queries.append(
-            f"Top {limit} {industry} organizations in "
-            f"{district}, {state}, {country}"
-        )
+        add_queries(f"{district}, {state}, {country}")
 
     if state:
-        queries.append(
-            f"Top {limit} {industry} organizations in "
-            f"{state}, {country}"
-        )
+        add_queries(f"{state}, {country}")
 
     if country:
-        queries.append(
-            f"Top {limit} {industry} organizations in "
-            f"{country}"
-        )
+        add_queries(country)
 
-    return queries
-
+    return list(dict.fromkeys(queries))
 
 
 
@@ -122,7 +125,7 @@ def search_companies(query: str):
 
     payload = {
         "q": query,
-        "num": 6,
+        "num": 11,
     }
 
     try:
