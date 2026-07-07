@@ -33,10 +33,7 @@ class CompetitorResponse(BaseModel):
     slug: Optional[str]
     created_at: datetime
     updated_at: datetime
-    total:int
-    page:int
-    limit:int
-
+ 
     model_config = ConfigDict(from_attributes=True)
 
 class CompetitorReturnResponse(BaseModel):
