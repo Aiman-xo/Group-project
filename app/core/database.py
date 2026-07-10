@@ -47,6 +47,10 @@ async def get_tenant_db(
     
     # Extract the subdomain
     subdomain = parts[0].lower() if len(parts) >= 3 else None
+
+    # Local development fallback
+    if not subdomain:
+        subdomain = request.headers.get("X-Tenant-Slug")
     
     # Fallback to public if no subdomain or is a reserved system subdomain
     if not subdomain or subdomain in RESERVED_SUBDOMAINS:
