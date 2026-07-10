@@ -45,6 +45,7 @@ def add_multiple_competitors(
     response_model=CompetitorResponse,
     status_code=status.HTTP_201_CREATED,
 )
+
 def add_competitor(
     competitor: CompetitorCreate,
     db: Session = Depends(get_authorized_tenant_db),
