@@ -2,8 +2,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+from fastapi import BackgroundTasks
+from app.schemas.analysis_schema import CompetitorAnalysisRequest
+from app.models.company_model import Company
 
-from app.core.multitenancy import get_authorized_tenant_db
+from app.core.multitenancy import (get_authorized_tenant_db, get_current_company)
 from app.schemas.competitor_schema import (
     CompetitorCreate,
     CompetitorUpdate,
@@ -16,13 +19,26 @@ from app.service.competitor_service import (
     get_competitor_by_id,
     update_competitor,
     delete_competitor,
+     add_selected_competitors,
+     start_competitor_analysis,
 )
 
 router = APIRouter(
     prefix="/competitors",
     tags=["Competitors"],
 )
-
+@router.post(
+    "/add",
+    response_model=list[CompetitorResponse],
+)
+def add_multiple_competitors(
+    competitors: list[CompetitorCreate],
+    db: Session = Depends(get_authorized_tenant_db),
+):
+    return add_selected_competitors(
+        db=db,
+        competitors=competitors,
+    )
 
 @router.post(
     "/",
@@ -50,6 +66,20 @@ def list_competitors(
 ):
     return get_all_competitors(db=db,page=page,limit=limit)
 
+
+@router.post("/analyze")
+def analyze_competitor(
+    request: CompetitorAnalysisRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_authorized_tenant_db),
+    current_company: Company = Depends(get_current_company),
+):
+    return start_competitor_analysis(
+        db=db,
+        request=request,
+        background_tasks=background_tasks,
+        current_company=current_company,
+    )
 
 @router.get(
     "/{competitor_id}",
@@ -92,3 +122,4 @@ def remove_competitor(
         db,
         competitor_id,
     )
+
