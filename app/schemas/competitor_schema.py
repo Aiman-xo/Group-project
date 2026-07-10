@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Optional,List
 
 from pydantic import BaseModel, ConfigDict
 
@@ -33,5 +33,14 @@ class CompetitorResponse(BaseModel):
     slug: Optional[str]
     created_at: datetime
     updated_at: datetime
-
+ 
     model_config = ConfigDict(from_attributes=True)
+
+class CompetitorReturnResponse(BaseModel):
+    competitors: List[CompetitorResponse]
+    total:int
+    page:int
+    limit:int
+
+
+

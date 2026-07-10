@@ -8,6 +8,7 @@ from app.schemas.competitor_schema import (
     CompetitorCreate,
     CompetitorUpdate,
     CompetitorResponse,
+    CompetitorReturnResponse
 )
 from app.service.competitor_service import (
     create_competitor,
@@ -40,12 +41,14 @@ def add_competitor(
 
 @router.get(
     "/",
-    response_model=list[CompetitorResponse],
+    response_model=CompetitorReturnResponse,
 )
 def list_competitors(
+    page: int = 1,
+    limit : int = 10,
     db: Session = Depends(get_authorized_tenant_db),
 ):
-    return get_all_competitors(db)
+    return get_all_competitors(db=db,page=page,limit=limit)
 
 
 @router.get(

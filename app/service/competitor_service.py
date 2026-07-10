@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from uuid import UUID
+from app.core.logger import logger
 
 from app.models.competitor_model import Competitor
 from app.schemas.competitor_schema import (
@@ -47,15 +48,27 @@ def create_competitor(
 
 
 def get_all_competitors(
-    db: Session,
+    db:Session,
+    page,
+    limit
 ):
-    return (
-        db.query(Competitor)
-        .order_by(
-            Competitor.created_at.desc()
-        )
-        .all()
-    )
+    try:
+        page = int(page)
+        limit = int(limit)
+        
+        offset = (page - 1) * limit
+        competitors = db.query(Competitor).order_by(Competitor.created_at.desc()).offset(offset).limit(limit).all()
+        total = db.query(Competitor).count()
+
+        return {
+            'competitors':competitors,
+            "total":total,
+            "page":page,
+            "limit":limit
+        }
+    except Exception as e:
+        logger.error(f'Error fetching competitors: {e}')
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail='Couldnt Fetch Competitors')
 
 
 def get_competitor_by_id(

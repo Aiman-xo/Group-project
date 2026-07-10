@@ -51,7 +51,7 @@ async def get_tenant_db(
     # Fallback to public if no subdomain or is a reserved system subdomain
     if not subdomain or subdomain in RESERVED_SUBDOMAINS:
         db.execute(text('SET search_path TO "public"'))
-        db.commit()
+        # db.commit()
         try:
             yield db
         finally:
@@ -60,8 +60,12 @@ async def get_tenant_db(
     # Check cache for schema name mapping
     cache_key = f"slug_to_schema:{subdomain}"
     schema_name = await redis_client.get(cache_key)
+
+    if schema_name:
+        # Redis returns bytes - decode it
+        schema_name = schema_name.decode() if isinstance(schema_name, bytes) else schema_name
     
-    if not schema_name:
+    else:
         from app.models.company_model import Company
         company = db.query(Company).filter(Company.slug == subdomain, Company.is_verified == True).first()
         if not company:
@@ -71,10 +75,13 @@ async def get_tenant_db(
             )
         schema_name = company.schema_name
         await redis_client.setex(cache_key, 86400, schema_name) # Cache for 24h
+
+    print(f"SETTING SCHEMA TO: {schema_name}")
+    print(f"SCHEMA TYPE: {type(schema_name)}")
         
     # Route to isolated schema
     db.execute(text(f'SET search_path TO "{schema_name}", public'))
-    db.commit()
+    # db.commit()
     try:
         yield db
     finally:
