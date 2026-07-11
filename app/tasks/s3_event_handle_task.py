@@ -24,7 +24,8 @@ r = redis_client.from_url(REDIS_URL, ssl_cert_reqs=None, socket_timeout=10,
     )
 
 EXPECTED_FILES = {
-    "admin": 3
+    "admin": 3,
+    "competitor": 3,
 }
 
 # ────────────────────────────────────────────────────────────────────────
@@ -47,10 +48,17 @@ def handle_s3_event_trigger(self,message_body:str):
         
         # This returns a dictionary with slug and folder_type ie admin/competitor.
         extracted_datas = extract_s3_metadata(records)
+        if not extracted_datas:
+            logger.warning("extract_s3_metadata returned None — bad S3 path, skipping message.")
+            return
         logger.info(f"Received file: {extracted_datas['file_key']} | company: {extracted_datas['slug']} | folder: {extracted_datas['folder_type']}")
 
-        group_key = f"pending : {extracted_datas['slug']}:{extracted_datas['folder_type']}"
-        lock_key = f"lock : {extracted_datas['slug']}:{extracted_datas['folder_type']}"
+        if extracted_datas['folder_type'] == 'competitor' and extracted_datas['competitor_slug']:
+            group_key = f"pending : {extracted_datas['slug']}:{extracted_datas['folder_type']}:{extracted_datas['competitor_slug']}"
+            lock_key  = f"lock : {extracted_datas['slug']}:{extracted_datas['folder_type']}:{extracted_datas['competitor_slug']}"
+        else:
+            group_key = f"pending : {extracted_datas['slug']}:{extracted_datas['folder_type']}"
+            lock_key  = f"lock : {extracted_datas['slug']}:{extracted_datas['folder_type']}"
 
         # push file into redis list
         r.rpush(group_key, extracted_datas['file_key'])
@@ -76,7 +84,7 @@ def handle_s3_event_trigger(self,message_body:str):
                 all_files = [f.decode() for f in r.lrange(group_key, 0, -1)]
                 r.delete(group_key)
                 logger.info(f"All files collected for {extracted_datas['slug']}, triggering ETL: {all_files}")
-                process_etl_file.delay(extracted_datas['slug'], extracted_datas['folder_type'], all_files)
+                process_etl_file.delay(extracted_datas['slug'], extracted_datas['folder_type'], all_files, extracted_datas['competitor_slug'])
             else:
                 logger.info(f"ETL already triggered for {extracted_datas['slug']}/{extracted_datas['folder_type']}, skipping duplicate.")
 

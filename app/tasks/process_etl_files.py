@@ -1,3 +1,4 @@
+from typing import Optional
 from app.core.celery_config import celery_app
 # from app.utils.s3_filepath_extractor import extract_s3_metadata
 from app.service.etl.transform_service import transform
@@ -5,6 +6,7 @@ from app.core.logger import logger
 # from app.core.config import REDIS_URL
 from app.core.database import sessionLocal
 from app.models.company_model import Company
+from app.models.competitor_model import Competitor
 from sqlalchemy import text
 from app.service.etl.load_into_db_service import load_competitor_data_to_db,load_profile_data_to_db
 from app.service.etl.extract_service import extract_content_from_file
@@ -23,7 +25,7 @@ import json
     max_retries=3,          # retry 3 times on failure
     default_retry_delay=60  # wait 60 seconds between retries
 )
-def process_etl_file(self, company_slug: str, folder: str, file_keys: list):
+def process_etl_file(self, company_slug: str, folder: str, file_keys: list, competitor_slug:Optional[str]):
     """
     Celery task that runs the ETL pipeline.
     Called when SQS message arrives 
@@ -74,10 +76,19 @@ def process_etl_file(self, company_slug: str, folder: str, file_keys: list):
                 print(response)
 
             elif folder == "competitor":
-                pass
-                # =================================================================================
-                # Need to write if the folder is copetitor code later.
-                # =================================================================================
+                competitor = db.query(Competitor).filter(Competitor.slug == competitor_slug).first()
+
+                if not competitor:
+                    logger.error(f"Competitor with slug '{competitor_slug}' not found in DB. Aborting ETL.")
+                    return
+
+                response = load_competitor_data_to_db(
+                    llm_output=transformed_data,
+                    db=db,
+                    competitor_id=competitor.id
+                )
+                logger.info(f"ETL task completed for competitor: {competitor_slug}")
+                
             else:
                 logger.error(f"Unknown folder type: {folder}")
     
