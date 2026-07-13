@@ -39,7 +39,11 @@ def load_competitor_data_to_db(llm_output:dict,db:Session,competitor_id:str):
                 'message':'new competitor record added!'
             }
 
-        existing.is_latest = False
+        # Deactivate all previous versions
+        db.query(CompetetorAnalyser).filter(
+            CompetetorAnalyser.competitor_id == competitor_id
+        ).update({"is_latest": False})
+        db.flush()
 
         # Cap versions at 3: delete the oldest record to keep history lean
         all_versions = db.query(CompetetorAnalyser).filter(
@@ -137,7 +141,11 @@ def load_profile_data_to_db(llm_output:dict,db:Session,company_id:str=None):
                 'message':'new profile record added!'
             }
 
-        existing_record.is_latest = False
+        # Deactivate all previous versions
+        db.query(ProfileDataAnalyser).filter(
+            ProfileDataAnalyser.company_id == company_id
+        ).update({"is_latest": False})
+        db.flush()
 
         # Cap versions at 3: delete the oldest record to keep history lean
         all_versions = db.query(ProfileDataAnalyser).filter(
