@@ -177,7 +177,7 @@ async def verify_otp_route(
 
 # routes/auth.py
 @router.post("/refresh", status_code=status.HTTP_200_OK)
-@limiter.limit("10/minute")
+# @limiter.limit("10/minute")
 async def refresh_token_route(
     request: Request,
     response: Response,
