@@ -11,7 +11,7 @@ def load_competitor_data_to_db(llm_output:dict,db:Session,competitor_id:str):
         if not existing:
             new_analysis_record = CompetetorAnalyser(
                 competitor_id = competitor_id,
-                competitor_name = llm_output['competitor_name'],
+                competitor_name = llm_output['company_name'],
                 source_file = llm_output['source_file'],
                 products = llm_output['products'],
                 services = llm_output['services'],
@@ -22,6 +22,13 @@ def load_competitor_data_to_db(llm_output:dict,db:Session,competitor_id:str):
                 email = llm_output['email'],
                 phone = llm_output['phone'],
                 summary_text = llm_output['summary'],
+                instagram = llm_output['instagram'],
+                rating_score = llm_output['rating_score'],
+                total_reviews = llm_output['total_reviews'],
+                review_source = llm_output['review_source'],
+                positive_themes = llm_output['positive_themes'],
+                negative_themes = llm_output['negative_themes'],
+                community_insights = llm_output['community_insights'],
                 version=1,
                 is_latest=True,
             )
@@ -32,7 +39,11 @@ def load_competitor_data_to_db(llm_output:dict,db:Session,competitor_id:str):
                 'message':'new competitor record added!'
             }
 
-        existing.is_latest = False
+        # Deactivate all previous versions
+        db.query(CompetetorAnalyser).filter(
+            CompetetorAnalyser.competitor_id == competitor_id
+        ).update({"is_latest": False})
+        db.flush()
 
         # Cap versions at 3: delete the oldest record to keep history lean
         all_versions = db.query(CompetetorAnalyser).filter(
@@ -44,7 +55,7 @@ def load_competitor_data_to_db(llm_output:dict,db:Session,competitor_id:str):
 
         updated_analysis_record = CompetetorAnalyser(
             competitor_id = competitor_id,
-            competitor_name = llm_output['competitor_name'],
+            competitor_name = llm_output['company_name'],
             source_file = llm_output['source_file'],
             products = llm_output['products'],
             services = llm_output['services'],
@@ -55,6 +66,13 @@ def load_competitor_data_to_db(llm_output:dict,db:Session,competitor_id:str):
             email = llm_output['email'],
             phone = llm_output['phone'],
             summary_text = llm_output['summary'],
+            instagram = llm_output['instagram'],
+            rating_score = llm_output['rating_score'],
+            total_reviews = llm_output['total_reviews'],
+            review_source = llm_output['review_source'],
+            positive_themes = llm_output['positive_themes'],
+            negative_themes = llm_output['negative_themes'],
+            community_insights = llm_output['community_insights'],
             version=existing.version + 1,
             is_latest=True,
         )
@@ -106,6 +124,13 @@ def load_profile_data_to_db(llm_output:dict,db:Session,company_id:str=None):
                 email = llm_output['email'],
                 phone = llm_output['phone'],
                 summary_text = llm_output['summary'],
+                instagram = llm_output['instagram'],
+                rating_score = llm_output['rating_score'],
+                total_reviews = llm_output['total_reviews'],
+                review_source = llm_output['review_source'],
+                positive_themes = llm_output['positive_themes'],
+                negative_themes = llm_output['negative_themes'],
+                community_insights = llm_output['community_insights'],
                 version=1,
                 is_latest=True,
             )
@@ -116,7 +141,11 @@ def load_profile_data_to_db(llm_output:dict,db:Session,company_id:str=None):
                 'message':'new profile record added!'
             }
 
-        existing_record.is_latest = False
+        # Deactivate all previous versions
+        db.query(ProfileDataAnalyser).filter(
+            ProfileDataAnalyser.company_id == company_id
+        ).update({"is_latest": False})
+        db.flush()
 
         # Cap versions at 3: delete the oldest record to keep history lean
         all_versions = db.query(ProfileDataAnalyser).filter(
@@ -138,6 +167,13 @@ def load_profile_data_to_db(llm_output:dict,db:Session,company_id:str=None):
             email = llm_output['email'],
             phone = llm_output['phone'],
             summary_text = llm_output['summary'],
+            instagram = llm_output['instagram'],
+            rating_score = llm_output['rating_score'],
+            total_reviews = llm_output['total_reviews'],
+            review_source = llm_output['review_source'],
+            positive_themes = llm_output['positive_themes'],
+            negative_themes = llm_output['negative_themes'],
+            community_insights = llm_output['community_insights'],
             version=existing_record.version + 1,
             is_latest=True,
         )

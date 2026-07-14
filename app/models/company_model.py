@@ -46,6 +46,18 @@ class ProfileDataAnalyser(TenantBase):
     email = Column(String(255),nullable=True)
     phone = Column(String(20),nullable=True)
     summary_text = Column(Text,nullable=True)
+
+    instagram = Column(String, nullable=True)
+
+    # Reputation/reviews (3rd file)
+    rating_score = Column(String, nullable=True)  # or Numeric, see note below
+    total_reviews = Column(Integer, nullable=True)
+    review_source = Column(String, nullable=True)
+    positive_themes = Column(ARRAY(Text), nullable=True)
+    negative_themes = Column(ARRAY(Text), nullable=True)
+
+    # Community/reddit insights (2nd file)
+    community_insights = Column(ARRAY(Text), nullable=True)
     
     # versions for storing the data only when there is change and we can track the version.
     version = Column(Integer,nullable=False,default=0)
