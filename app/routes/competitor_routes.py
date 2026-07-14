@@ -21,6 +21,7 @@ from app.service.competitor_service import (
     delete_competitor,
      add_selected_competitors,
      start_competitor_analysis,
+     get_competitor_analysis,
 )
 
 router = APIRouter(
@@ -80,6 +81,18 @@ def analyze_competitor(
         request=request,
         background_tasks=background_tasks,
         current_company=current_company,
+    )
+
+@router.get(
+    "/{competitor_id}/analysis",
+)
+def get_analysis(
+    competitor_id: UUID,
+    db: Session = Depends(get_authorized_tenant_db),
+):
+    return get_competitor_analysis(
+        db=db,
+        competitor_id=competitor_id,
     )
 
 @router.get(
