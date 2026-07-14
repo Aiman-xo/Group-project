@@ -6,6 +6,7 @@ import uuid
 from app.utils.slug import generate_slug
 from app.core.logger import logger
 from app.models.company_model import Company
+from app.models.competetor_analyser import CompetetorAnalyser,CompetitorComparison
 
 from app.schemas.analysis_schema import CompetitorAnalysisRequest
 from app.service.background_tasks import run_background_crawler_pipeline
@@ -269,4 +270,53 @@ def start_competitor_analysis(
         "message": "Competitor analysis started.",
         "company_name":competitor.company_name,
         "slug": competitor.slug,
+    }
+
+def get_competitor_analysis(
+    db: Session,
+    competitor_id: UUID,
+):
+    competitor = (
+        db.query(Competitor)
+        .filter(Competitor.id == competitor_id)
+        .first()
+    )
+
+    if not competitor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Competitor not found."
+        )
+
+    analysis = (
+        db.query(CompetetorAnalyser)
+        .filter(
+            CompetetorAnalyser.competitor_id == competitor_id,
+            CompetetorAnalyser.is_latest == True,
+        )
+        .first()
+    )
+
+    comparison = None
+
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis is not found."
+        )
+
+    if analysis:
+        comparison = (
+            db.query(CompetitorComparison)
+            .filter(
+                CompetitorComparison.competitor_id == analysis.id,
+                CompetitorComparison.is_latest == True,
+            )
+            .first()
+        )
+
+    return {
+        "competitor": competitor,
+        "analysis": analysis,
+        "comparison": comparison,
     }
