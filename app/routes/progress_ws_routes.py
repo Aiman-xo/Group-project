@@ -41,3 +41,36 @@ async def websocket_progress(websocket: WebSocket, company_id: str):
 
     finally:
         await websocket.close()
+
+@router.websocket('/ws/progress/etl/{company_slug}')
+async def etl_websocket_progress(websocket:WebSocket, company_slug:str):
+    await websocket.accept()
+
+    try:
+        last_sent = None
+
+        while True:
+            progress_data = await redis_client.get(
+                f"etl_progress:{company_slug}"
+            )
+
+            if progress_data and progress_data != last_sent:
+                await websocket.send_text(progress_data)
+                last_sent = progress_data
+
+                parsed = json.loads(progress_data)
+
+                # stop when completed or failed
+                if parsed["progress"] in [100, -1]:
+                    break
+
+            await asyncio.sleep(1)
+
+    except WebSocketDisconnect:
+        print(f"WebSocket disconnected for {company_slug}")
+
+    finally:
+        try:
+            await websocket.close()
+        except RuntimeError:
+            pass

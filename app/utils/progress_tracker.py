@@ -20,3 +20,17 @@ def update_progress(company_id: str, progress: int, status: str):
         json.dumps(payload),
         ex=3600   # auto delete after 1 hour
     )
+
+def update_etl_progress(company_slug:str, progress:int, status:str):
+    key = f'etl_progress:{company_slug}'
+
+    payload = {
+        "progress": progress,
+        "status": status
+    }
+
+    redis_client.set(
+        key,
+        json.dumps(payload),
+        ex=3600   
+    )
