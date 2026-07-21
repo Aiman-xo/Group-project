@@ -28,10 +28,7 @@ router = APIRouter(
     prefix="/competitors",
     tags=["Competitors"],
 )
-@router.post(
-    "/add",
-    response_model=list[CompetitorResponse],
-)
+@router.post("/add")
 def add_multiple_competitors(
     competitors: list[CompetitorCreate],
     db: Session = Depends(get_authorized_tenant_db),
