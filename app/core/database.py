@@ -15,7 +15,8 @@ engine = create_engine(DATABASE_URL)
 sessionLocal = sessionmaker(
     autoflush=False,
     autocommit = False,
-    bind=engine
+    bind=engine,
+    expire_on_commit=False
 )
 
 # Base = declarative_base()
@@ -85,6 +86,8 @@ async def get_tenant_db(
         
     # Route to isolated schema
     db.execute(text(f'SET search_path TO "{schema_name}", public'))
+
+    
     # db.commit()
     try:
         yield db
