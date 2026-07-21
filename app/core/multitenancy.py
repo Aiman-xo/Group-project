@@ -1,8 +1,7 @@
 # This function needs to be run at the time of registration before hitting the db
 # This runs the migration inside the new schema we created and creates all the models that are not in the public.
 
-import re
-from pathlib import Path
+import os
 from alembic.config import Config
 from alembic import command
 from fastapi import Depends ,HTTPException
@@ -10,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import text
 
 from sqlalchemy.orm import Session
-from app.core.database import TenantBase, engine, get_db
+from app.core.database import get_db
 from app.core.security import verify_token
 from app.models.company_model import Company
 
@@ -18,43 +17,16 @@ oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/api/v1/auth/login"
 )
 
-TENANT_SCHEMA_RE = re.compile(r"^tenant_[a-z0-9_]+$")
-
-
-def validate_tenant_schema_name(schema_name: str) -> None:
-    if not TENANT_SCHEMA_RE.fullmatch(schema_name):
-        raise ValueError(f"Invalid tenant schema name: {schema_name}")
-
-
 def create_tenant_schema_tables(schema_name:str):
     """Programmatically runs 'alembic upgrade head' inside a specific schema"""
-    validate_tenant_schema_name(schema_name)
-
-    project_root = Path(__file__).resolve().parents[2]
-    alembic_cfg = Config(str(project_root / "alembic_tenant.ini"))
+    # Point to your local alembic_tenant.ini file
+    alembic_cfg = Config("alembic_tenant.ini")
     
-    # Programmatic equivalent of: alembic -x tenant=<schema_name> upgrade head
-    alembic_cfg.attributes["tenant_schema"] = schema_name
+    # Pass the custom schema name as an alembic -x argument dynamically!
+    alembic_cfg.set_main_option("x", f"tenant={schema_name}")
     
+    # Run the upgrade command to stamp all existing models into this new schema
     command.upgrade(alembic_cfg, "head")
-
-    tenant_tables = TenantBase.metadata.tables.keys()
-    with engine.connect() as connection:
-        missing_tables = [
-            table_name
-            for table_name in tenant_tables
-            if connection.execute(
-                text("SELECT to_regclass(:qualified_table)"),
-                {"qualified_table": f"{schema_name}.{table_name}"},
-            ).scalar()
-            is None
-        ]
-
-    if missing_tables:
-        raise RuntimeError(
-            f"Tenant schema '{schema_name}' is missing migrated tables: "
-            f"{', '.join(sorted(missing_tables))}"
-        )
 
 
 async def get_current_company(
