@@ -11,6 +11,7 @@ from sqlalchemy import text
 from app.service.etl.load_into_db_service import load_competitor_data_to_db,load_profile_data_to_db
 from app.service.etl.extract_service import extract_content_from_file
 from app.service.compare_service import run_compare_agent
+from app.utils.progress_tracker import update_etl_progress
 from sqlalchemy.exc import SQLAlchemyError
 
 import asyncio
@@ -47,28 +48,35 @@ def process_etl_file(self, company_slug: str, folder: str, file_keys: list, comp
             if content:
                 combined_raw_text += f"\n\n--- Source: {key} ---\n{content}"
 
+        update_etl_progress(company_slug,60,'Extraction Completed')
          # ── Step 2: Transform once on combined text ──────────────────────
+        update_etl_progress(company_slug,60,'Transforming Datas...')
         transformed_data = asyncio.run(
             transform({
                 "raw_data": combined_raw_text,
                 "source_file": None
             })
         )
+        update_etl_progress(company_slug,70,'Transforming Datas Completed.')
 
         if transformed_data is None:
             logger.error(f"Transform returned None for {company_slug}. Aborting.")
             return
         
         db = sessionLocal()
+        update_etl_progress(company_slug,75,'Checking company datas...')
         current_company = db.query(Company).filter(Company.slug == company_slug).first()
 
         if not current_company:
             logger.error(f'could not able to fetch the company try again!')
             return
         
+        update_etl_progress(company_slug,80,'Fetching company details...')
         db.execute(text(f'SET search_path TO "{current_company.schema_name}"'))
 
+        update_etl_progress(company_slug,90,'Savind Datas...')
         if folder == "admin":
+            update_etl_progress(company_slug,95,'Creating Versions...')
             response = load_profile_data_to_db(
                 llm_output=transformed_data,
                 db=db,
@@ -76,6 +84,7 @@ def process_etl_file(self, company_slug: str, folder: str, file_keys: list, comp
             )
             logger.info(f"ETL task completed for: {company_slug}")
             logger.info(response)
+            update_etl_progress(company_slug,100,'ETL process completed.')
 
         elif folder == "competitor":
             competitor = db.query(Competitor).filter(Competitor.slug == competitor_slug).first()
@@ -85,6 +94,7 @@ def process_etl_file(self, company_slug: str, folder: str, file_keys: list, comp
             
             competitor_id = competitor.id 
 
+            update_etl_progress(company_slug,95,'Creating Versions...')
             response = load_competitor_data_to_db(
                 llm_output=transformed_data,
                 db=db,
@@ -96,7 +106,8 @@ def process_etl_file(self, company_slug: str, folder: str, file_keys: list, comp
 
             compare_response = asyncio.run(run_compare_agent(competitor_id=competitor_id, company_id=current_company.id, db=db))
             logger.info(f"compare agent run status: {compare_response} ===============>>")
-            
+            update_etl_progress(company_slug,100,'ETL process completed.')
+
         else:
             logger.error(f"Unknown folder type: {folder}")
     

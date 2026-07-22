@@ -4,6 +4,7 @@ from app.core.celery_config import celery_app
 from app.utils.s3_filepath_extractor import extract_s3_metadata
 # from app.service.etl.etl_pipeline_service import run_etl_pipeline
 from app.tasks.process_etl_files import process_etl_file
+from app.utils.progress_tracker import update_etl_progress
 from app.core.logger import logger
 from app.core.config import REDIS_URL
 import asyncio
@@ -62,10 +63,14 @@ def handle_s3_event_trigger(self,message_body:str):
 
         # push file into redis list
         r.rpush(group_key, extracted_datas['file_key'])
-        r.expire(group_key, 3600)  # cleanup after 1 hour if stuck
+        # cleanup after 1 hour if stuck
+        r.expire(group_key, 3600)  
 
         arrived = r.llen(group_key)
         expected = EXPECTED_FILES.get(extracted_datas['folder_type'], 3)
+        progress = 15 + int((arrived / expected) * 40)
+    
+        update_etl_progress(extracted_datas['slug'],min(progress,55),f'Fetching files from s3. ({arrived}/{expected})')
 
         logger.info(f"[{extracted_datas['slug']}/{extracted_datas['folder_type']}] {arrived}/{expected} files arrived")
 
@@ -84,7 +89,9 @@ def handle_s3_event_trigger(self,message_body:str):
                 all_files = [f.decode() for f in r.lrange(group_key, 0, -1)]
                 r.delete(group_key)
                 logger.info(f"All files collected for {extracted_datas['slug']}, triggering ETL: {all_files}")
+                update_etl_progress(extracted_datas['slug'],57,'File Extraction started')
                 process_etl_file.delay(extracted_datas['slug'], extracted_datas['folder_type'], all_files, extracted_datas['competitor_slug'])
+                
             else:
                 logger.info(f"ETL already triggered for {extracted_datas['slug']}/{extracted_datas['folder_type']}, skipping duplicate.")
 
