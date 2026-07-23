@@ -2,6 +2,7 @@ from app.core.database import PublicBase,TenantBase
 from sqlalchemy import Column,String,Integer,Boolean,ForeignKey,ARRAY,Text,DateTime
 from datetime import datetime,timezone
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB
 
 import uuid
 
@@ -72,3 +73,31 @@ class ProfileDataAnalyser(TenantBase):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc)
     )
+
+class CSVDatas(TenantBase):
+    __tablename__ = 'csv_data_analyse_table'
+    
+    id = Column(UUID(as_uuid=True),unique=True, primary_key=True,nullable=False,default=uuid.uuid4)
+    company_id = Column(UUID(as_uuid=True),nullable=True)
+    version = Column(Integer, nullable=False) 
+    raw_csv_s3_key = Column(String, nullable=True)
+    parsed_data = Column(JSONB, nullable=False)
+
+    summary = Column(Text,nullable=True)
+    health_score = Column(Integer, nullable=True)
+    health_score_reason = Column(Text, nullable=True)
+
+    growth_areas = Column(JSONB, nullable=True)
+    problem_areas = Column(JSONB, nullable=True)
+    recommendations = Column(JSONB, nullable=True)
+    metric_changes = Column(JSONB, nullable=True)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
+    ) 
