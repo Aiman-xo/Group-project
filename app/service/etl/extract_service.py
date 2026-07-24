@@ -26,7 +26,7 @@ def download_from_s3(key: str) -> str:
         return content
     except Exception as e:
         logger.error(f"Failed to download from S3: {key} | Error: {str(e)}")
-        return ""
+        raise
 
 # This function takes the key from redis and if the file ends with json then it converts it into readable dict format and if it is txt then return as it it
 # Because the txt downloads as string from s3.
