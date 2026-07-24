@@ -17,7 +17,7 @@ async def transform(raw_data: dict):
 
     try:
         response = await client.chat.completions.create(
-            model='meta-llama/llama-4-scout-17b-16e-instruct',
+            model='llama-3.3-70b-versatile',
             max_tokens=1024,
             response_format={'type':'json_object'},
             messages = [

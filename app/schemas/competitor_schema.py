@@ -26,13 +26,13 @@ class CompetitorResponse(BaseModel):
     id: UUID
     company_name: str
     website_url: str
-    industry: Optional[str]
-    location: Optional[str]
-    description: Optional[str]
-    is_active: bool
-    slug: Optional[str]
-    created_at: datetime
-    updated_at: datetime
+    industry: Optional[str] = None
+    location: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    slug: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
  
     model_config = ConfigDict(from_attributes=True)
 

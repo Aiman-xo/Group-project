@@ -110,6 +110,7 @@ async def discover_competitors(
                     "company_name": company_name,
                     "website_url": official_url,
                     "location": location,
+                    "industry": industry,
                 }
             )
 

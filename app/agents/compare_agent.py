@@ -63,7 +63,7 @@ async def competitor_analyser_agent(competitor_id:str, company_id:str, db:Sessio
         user_message = build_user_message(competitor_name, competitor_payload, company_payload)
 
         response = await client.chat.completions.create(
-            model='meta-llama/llama-4-scout-17b-16e-instruct',
+            model='llama-3.3-70b-versatile',
             max_tokens=1024,
             response_format={'type':'json_object'},
             messages = [

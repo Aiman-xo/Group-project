@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status,BackgroundTasks
 from uuid import UUID
 import uuid
-
+from sqlalchemy import text
 from app.utils.slug import generate_slug
 from app.core.logger import logger
 from app.models.company_model import Company
@@ -23,13 +23,19 @@ def create_competitor(
     db: Session,
     competitor: CompetitorCreate,
 ):
+    print("=" * 50)
+    print("CREATE COMPETITOR CALLED")
+    print("Website:", competitor.website_url)
+
     existing = (
         db.query(Competitor)
         .filter(
-            Competitor.website_url == competitor.website_url
+            Competitor.website_url == competitor.website_url,
+            Competitor.is_active == True,
         )
         .first()
     )
+    print("Existing:", existing)
 
     if existing:
         raise HTTPException(
@@ -61,12 +67,33 @@ def create_competitor(
 
     try:
         db.add(new_competitor)
+
+        result = db.execute(text("SHOW search_path"))
+        print("Before commit:", result.scalar())
+
         db.commit()
-        db.refresh(new_competitor)
-        return new_competitor
+
+        result = db.execute(text("SHOW search_path"))
+        print("SEARCH PATH:", result.scalar())
+        
+
+        # db.refresh(new_competitor)
+
+        # return new_competitor
+        return {
+            "id": str(new_competitor.id),
+            "company_name": new_competitor.company_name,
+            "website_url": new_competitor.website_url,
+            "industry": new_competitor.industry,
+            "location": new_competitor.location,
+            "description": new_competitor.description,
+        }
 
     except Exception:
         db.rollback()
+        import traceback
+        traceback.print_exc()
+        print("CREATE COMPETITOR ERROR:")
         raise
 
 def add_selected_competitors(
@@ -77,12 +104,13 @@ def add_selected_competitors(
 
     for competitor in competitors:
         existing = (
-            db.query(Competitor)
-            .filter(
-                Competitor.website_url == competitor.website_url
+                db.query(Competitor)
+                .filter(
+                    Competitor.website_url == competitor.website_url,
+                    Competitor.is_active == True,
+                )
+                .first()
             )
-            .first()
-        )
 
         # Skip duplicates
         if existing:
@@ -114,15 +142,32 @@ def add_selected_competitors(
 
     try:
         db.commit()
+            
 
-        for competitor in saved_competitors:
-            db.refresh(competitor)
-
-        return get_all_competitors(db)
+        return {
+                "message": "saved successfully"
+            }
 
     except Exception:
-        db.rollback()
-        raise
+            db.rollback()
+            raise
+
+    # try:
+    #     db.commit()
+    #     result = db.execute(text("SHOW search_path"))
+    #     print("SEARCH PATH:", result.scalar())
+
+    #     count = db.query(Competitor).count()
+    #     print("COUNT:", count)
+
+    #     # for competitor in saved_competitors:
+    #     #     db.refresh(competitor)
+
+    #     return get_all_competitors(db,page=1,limit=10)
+
+    # except Exception:
+    #     db.rollback()
+    #     raise
     
 def get_all_competitors(
     db:Session,
@@ -134,8 +179,22 @@ def get_all_competitors(
         limit = int(limit)
         
         offset = (page - 1) * limit
-        competitors = db.query(Competitor).order_by(Competitor.created_at.desc()).offset(offset).limit(limit).all()
-        total = db.query(Competitor).count()
+
+        competitors = (
+                db.query(Competitor)
+                .filter(Competitor.is_active == True)
+                .order_by(Competitor.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+                .all()
+            )
+
+        total = (
+                db.query(Competitor)
+                .filter(Competitor.is_active == True)
+                .count()
+        ) 
+       
 
         return {
             'competitors':competitors,
@@ -155,7 +214,9 @@ def get_competitor_by_id(
     competitor = (
         db.query(Competitor)
         .filter(
-            Competitor.id == competitor_id
+            Competitor.id == competitor_id,
+            Competitor.is_active == True
+
         )
         .first()
     )
@@ -229,8 +290,13 @@ def delete_competitor(
     )
 
     try:
-        db.delete(competitor)
+
+        competitor.is_active = False
+
+        # db.delete(competitor)
+        # db.commit()
         db.commit()
+        # db.refresh(competitor)
 
         return {
             "message": "Competitor deleted successfully."
