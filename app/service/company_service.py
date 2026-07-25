@@ -3,9 +3,11 @@ import boto3
 
 from uuid import uuid4
 from fastapi import HTTPException, status, UploadFile
+from sqlalchemy.exc import SQLAlchemyError
 from app.core.url_utils import normalize_url
+from app.core.logger import logger
 from sqlalchemy.orm import Session
-from app.models.company_model import Company
+from app.models.company_model import Company,CSVDatas
 from app.tasks.process_csv_file_task import process_uploaded_csv
 from app.utils.progress_tracker import update_csv_file_upload_progress,reset_progress
 from app.core.config import AWS_STORAGE_BUCKET_NAME,AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID,AWS_REGION
@@ -106,3 +108,20 @@ async def csv_upload_service(
     return {
         "message": "Upload received, processing started",
     }
+
+def get_csv_analyses_data_service(db:Session):
+    try:
+        csv_analysed_data = db.query(CSVDatas).order_by(CSVDatas.version.desc()).first()
+        if not csv_analysed_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No analysed data found"
+            )
+
+        return csv_analysed_data
+
+    except HTTPException:
+        raise  # don't let the generic handler below swallow this
+    except SQLAlchemyError as e:
+        logger.error(f"DB error fetching analysed data: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong!")
