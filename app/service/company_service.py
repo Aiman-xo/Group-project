@@ -1,7 +1,16 @@
 import httpx
+import boto3
 
-from fastapi import HTTPException, status
+from uuid import uuid4
+from fastapi import HTTPException, status, UploadFile
+from sqlalchemy.exc import SQLAlchemyError
 from app.core.url_utils import normalize_url
+from app.core.logger import logger
+from sqlalchemy.orm import Session
+from app.models.company_model import Company,CSVDatas
+from app.tasks.process_csv_file_task import process_uploaded_csv
+from app.utils.progress_tracker import update_csv_file_upload_progress,reset_progress
+from app.core.config import AWS_STORAGE_BUCKET_NAME,AWS_SECRET_ACCESS_KEY,AWS_ACCESS_KEY_ID,AWS_REGION
 
 
 async def check_company_url(url: str):
@@ -54,3 +63,65 @@ async def check_company_url(url: str):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to validate website URL"
         )
+
+s3_client = boto3.client(
+    "s3",
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    region_name=AWS_REGION
+    )
+async def csv_upload_service(
+    db:Session,
+    uploaded_csv:UploadFile,
+    current_company:Company
+):
+    reset_progress('csv_upload', current_company.slug)
+    if not uploaded_csv.filename.endswith('.csv'):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail='Cannot process the file, Invalid File!')
+    
+    contents = await uploaded_csv.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    
+    s3_key = f"market-analysis/{current_company.slug}/{uuid4()}.csv"
+
+    try:
+        update_csv_file_upload_progress(current_company.slug,15,'Uploading file...')
+        s3_client.put_object(
+            Bucket=AWS_STORAGE_BUCKET_NAME,
+            Key=s3_key,
+            Body=contents,
+            ContentType="text/csv"
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file to S3: {str(e)}")
+    
+    update_csv_file_upload_progress(current_company.slug,25,'File uploaded!')
+    process_uploaded_csv.delay(
+
+        str(current_company.id),
+        current_company.slug,
+        s3_key
+    )
+    
+    return {
+        "message": "Upload received, processing started",
+    }
+
+def get_csv_analyses_data_service(db:Session):
+    try:
+        csv_analysed_data = db.query(CSVDatas).order_by(CSVDatas.version.desc()).first()
+        if not csv_analysed_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No analysed data found"
+            )
+
+        return csv_analysed_data
+
+    except HTTPException:
+        raise  # don't let the generic handler below swallow this
+    except SQLAlchemyError as e:
+        logger.error(f"DB error fetching analysed data: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong!")
