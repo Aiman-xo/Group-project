@@ -8,6 +8,7 @@ from app.core.multitenancy import (
 from app.models.company_model import ProfileDataAnalyser
 from app.schemas.instagram_schema import InstagramUrlUpdate
 from app.service.instagram_service import InstagramService
+from app.models.company_model import InstagramAnalysis
 
 
 router = APIRouter(
@@ -142,4 +143,79 @@ def connect_instagram(
     return {
         "success": True,
         "message": "Instagram data collected successfully"
+    }
+
+@router.get("/analysis")
+def get_instagram_analysis(
+    db: Session = Depends(get_authorized_tenant_db),
+    current_company=Depends(get_current_company),
+):
+    analysis = (
+        db.query(InstagramAnalysis)
+        .filter(
+            InstagramAnalysis.company_id == current_company.id,
+            InstagramAnalysis.is_latest.is_(True),
+        )
+        .order_by(InstagramAnalysis.created_at.desc())
+        .first()
+    )
+
+    if not analysis:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Instagram analysis not found"
+        )
+
+    return {
+        "success": True,
+        "data": {
+            "id": analysis.id,
+
+            # Profile
+            "instagram_id": analysis.instagram_id,
+            "username": analysis.username,
+            "full_name": analysis.full_name,
+            "biography": analysis.biography,
+            "followers_count": analysis.followers_count,
+            "follows_count": analysis.follows_count,
+            "posts_count": analysis.posts_count,
+            "verified": analysis.verified,
+            "is_business_account": analysis.is_business_account,
+            "business_category_name": analysis.business_category_name,
+            "external_urls": analysis.external_urls,
+
+            # Posts summary
+            "analyzed_posts_count": analysis.analyzed_posts_count,
+            "total_likes": analysis.total_likes,
+            "total_comments": analysis.total_comments,
+            "total_video_views": analysis.total_video_views,
+
+            # Average engagement
+            "average_likes": analysis.average_likes,
+            "average_comments": analysis.average_comments,
+            "average_video_views": analysis.average_video_views,
+            "engagement_rate": (
+                float(analysis.engagement_rate)
+                if analysis.engagement_rate is not None
+                else None
+            ),
+
+            # Analysis
+            "content_type_stats": analysis.content_type_stats,
+            "top_hashtags": analysis.top_hashtags,
+            "top_mentions": analysis.top_mentions,
+
+            # Best content
+            "top_post": analysis.top_post,
+            "top_video": analysis.top_video,
+
+            # Posts
+            "latest_posts": analysis.latest_posts,
+
+            # Metadata
+            "version": analysis.version,
+            "last_analyzed_at": analysis.last_analyzed_at,
+            "created_at": analysis.created_at,
+            "updated_at": analysis.updated_at,
+        }
     }
