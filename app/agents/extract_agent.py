@@ -73,6 +73,7 @@ class ExtractAgent:
 
         # Build highly compressed text payload
         clean_text = self._build_clean_text(html)
+        careers_page = self._is_careers_page(page, clean_text)
 
         return {
             "url": page.get("website_url"),
@@ -80,6 +81,7 @@ class ExtractAgent:
             "phones": phones,
             "social_links": social_links,
             "clean_text": clean_text,
+            "careers_page": careers_page,
         }
 
     def _build_clean_text(self, html: str) -> str:
@@ -173,3 +175,26 @@ class ExtractAgent:
     def _valid_phone(self, raw: str) -> bool:
         digits = re.sub(r"\D", "", raw)
         return 7 <= len(digits) <= 15
+
+    def _is_careers_page(self, page: dict, clean_text: str) -> bool:
+        url = (page.get("website_url") or "").lower()
+        title = (page.get("title") or "").lower()
+        text = clean_text.lower()
+
+        keywords = [
+            "career",
+            "careers",
+            "jobs",
+            "job openings",
+            "vacancies",
+            "join our team",
+            "work with us",
+            "open positions",
+        ]
+
+        return any(
+            keyword in url or keyword in title or keyword in text
+            for keyword in keywords
+        )
+
+    
