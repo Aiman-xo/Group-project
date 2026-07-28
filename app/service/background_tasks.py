@@ -3,14 +3,12 @@ from app.service.crawl_service import CrawlerService
 from app.agents.extract_agent import ExtractAgent
 from app.service.intel_service import IntelService
 from app.utils.s3_uploader import S3Uploader
-from app.service.instagram_oauth_service import InstagramService
 from app.utils.progress_tracker import update_progress
 
 crawler_service = CrawlerService()
 extractor_agent = ExtractAgent()
 intel_service = IntelService()
 s3_uploader = S3Uploader()
-instagram_service = InstagramService()
 
 
 def run_background_crawler_pipeline(company_id: str, company_name: str, website_url: str, is_competitor: bool):
@@ -87,16 +85,6 @@ def run_background_crawler_pipeline(company_id: str, company_name: str, website_
             s3_target_key=s3_target_key
         )
 
-        # Instagram analysis (Competitors only)
-        
-        # if is_competitor:
-        #     update_progress(company_id, 75, "Analyzing Instagram")
-
-        #     instagram_service.process_instagram(
-        #         company_id=company_id,
-        #         company_name=company_name,
-        #         crawled_pages=crawled_payload["pages"]
-        #     )
 
         update_progress(company_id, 80, "Processing external intelligence")
 

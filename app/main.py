@@ -8,6 +8,7 @@ from app.routes.company_routes import router as company_router
 from app.routes.website_url_routes import router as website_url_router
 from app.routes.competitor_routes import router as competitor_router
 from app.routes.instagram_routes import router as instagram_router
+from app.routes.instagram_compitetors_routes import router as instagram_competitor_router
 # Rate Limiting
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -52,4 +53,5 @@ app.include_router(progress_router, prefix="/api/v1")
 app.include_router(progress_ws_router, prefix="/api/v1")
 app.include_router(competitor_router,prefix="/api/v1",)
 app.include_router(instagram_router, prefix="/api/v1")
+app.include_router(instagram_competitor_router,prefix="/api/v1")
 
