@@ -17,7 +17,7 @@ import asyncio
     max_retries=3,          # retry 3 times on failure
     default_retry_delay=60  # wait 60 seconds between retries
 )
-def process_uploaded_csv(self,company_id:str,company_slug:str, s3_key:str):
+def process_uploaded_csv(self,company_id:str,company_slug:str, s3_key:str, category:str):
     logger.info(f"CSV task started for {company_slug}") 
     db=None
     try:
@@ -39,7 +39,7 @@ def process_uploaded_csv(self,company_id:str,company_slug:str, s3_key:str):
         update_csv_file_upload_progress(company_slug,55,'Fetching last versions...')
         last_version = (
             db.query(CSVDatas)
-            .filter(CSVDatas.company_id == company_id)
+            .filter(CSVDatas.company_id == company_id,CSVDatas.data_category == category)
             .order_by(CSVDatas.version.desc())
             .first()
         )
@@ -52,6 +52,7 @@ def process_uploaded_csv(self,company_id:str,company_slug:str, s3_key:str):
             company_id=company_id,
             version=new_version_number,
             raw_csv_s3_key=s3_key,
+            data_category=category,
             parsed_data=parsed_data,
         )
         previous_data = last_version.parsed_data if last_version else None
@@ -60,7 +61,8 @@ def process_uploaded_csv(self,company_id:str,company_slug:str, s3_key:str):
             csv_analysis_agent(
                 new_data=parsed_data,
                 previous_data=previous_data,
-                company_slug=company_slug
+                company_slug=company_slug,
+                category=category,
             )
         )
 

@@ -4,8 +4,10 @@ from datetime import datetime,timezone
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import Numeric
+from sqlalchemy import Enum as SQLAlchemyEnum
 
 import uuid
+import enum
 
 class Company(PublicBase):
     __tablename__ = 'companies'
@@ -75,12 +77,27 @@ class ProfileDataAnalyser(TenantBase):
         onupdate=lambda: datetime.now(timezone.utc)
     )
 
+
+
+class CsvDataCategory(str, enum.Enum):
+    SALES = "sales"
+    PRODUCTION = "production"
+    INVENTORY = "inventory"
+    MARKETING = "marketing"
+    FINANCE = "finance"
+    CUSTOMER = "customer"
+    OTHER = "other"   # fallback for anything the classifier can't confidently place
+
 class CSVDatas(TenantBase):
     __tablename__ = 'csv_data_analyse_table'
     
     id = Column(UUID(as_uuid=True),unique=True, primary_key=True,nullable=False,default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True),nullable=True)
     version = Column(Integer, nullable=False) 
+    data_category = Column(
+        SQLAlchemyEnum(CsvDataCategory, name="csv_data_category",values_callable=lambda enum_cls: [e.value for e in enum_cls]),
+        nullable=False
+    )
     raw_csv_s3_key = Column(String, nullable=True)
     parsed_data = Column(JSONB, nullable=False)
 
