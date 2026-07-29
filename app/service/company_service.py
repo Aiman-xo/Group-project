@@ -73,7 +73,8 @@ s3_client = boto3.client(
 async def csv_upload_service(
     db:Session,
     uploaded_csv:UploadFile,
-    current_company:Company
+    current_company:Company,
+    category:str
 ):
     reset_progress('csv_upload', current_company.slug)
     if not uploaded_csv.filename.endswith('.csv'):
@@ -83,7 +84,7 @@ async def csv_upload_service(
     if not contents:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
     
-    s3_key = f"market-analysis/{current_company.slug}/{uuid4()}.csv"
+    s3_key = f"market-analysis/{current_company.slug}/{category}/{uuid4()}.csv"
 
     try:
         update_csv_file_upload_progress(current_company.slug,15,'Uploading file...')
@@ -102,16 +103,17 @@ async def csv_upload_service(
 
         str(current_company.id),
         current_company.slug,
-        s3_key
+        s3_key,
+        category,
     )
     
     return {
         "message": "Upload received, processing started",
     }
 
-def get_csv_analyses_data_service(db:Session):
+def get_csv_analyses_data_service(db:Session,category:str):
     try:
-        csv_analysed_data = db.query(CSVDatas).order_by(CSVDatas.version.desc()).first()
+        csv_analysed_data = db.query(CSVDatas).filter(CSVDatas.data_category == category).order_by(CSVDatas.version.desc()).first()
         if not csv_analysed_data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

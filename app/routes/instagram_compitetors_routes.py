@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.competetor_analyser import CompetetorAnalyser
 from app.models.competitor_model import Competitor
-from app.service.instagram_service import InstagramService
+from app.service.instagram.instagram_service import InstagramService
 from app.core.multitenancy import get_current_company
 
 

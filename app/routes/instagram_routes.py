@@ -7,7 +7,7 @@ from app.core.multitenancy import (
 )
 from app.models.company_model import ProfileDataAnalyser
 from app.schemas.instagram_schema import InstagramUrlUpdate
-from app.service.instagram_service import InstagramService
+from app.service.instagram.instagram_service import InstagramService
 
 
 router = APIRouter(

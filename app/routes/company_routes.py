@@ -6,6 +6,7 @@ from app.core.multitenancy import get_current_company
 from app.service.company_service import csv_upload_service,get_csv_analyses_data_service
 from app.models.company_model import Company
 from app.schemas.csv_upload_schema import CsvUploadResponse,GetCsvAnalyseResponse
+from app.models.company_model import CsvDataCategory
 
 
 router = APIRouter(
@@ -29,16 +30,19 @@ async def me(
     }
 
 # CSV upload route
-@router.post('/upload/csv',response_model=CsvUploadResponse)
+@router.post('/upload/csv/{category}',response_model=CsvUploadResponse)
 async def upload_csv(
+    category:CsvDataCategory,
     uploaded_csv:UploadFile = File(...), 
     db:Session = Depends(get_authorized_tenant_db),
-    current_company:Company=Depends(get_current_company)
+    current_company:Company=Depends(get_current_company),
+    
 ):
-    return await csv_upload_service(uploaded_csv=uploaded_csv,current_company=current_company,db=db)
+    return await csv_upload_service(uploaded_csv=uploaded_csv,current_company=current_company,category=category,db=db)
 
-@router.get('/csv/analysed-data',response_model=GetCsvAnalyseResponse)
+@router.get('/csv/analysed-data/{category}',response_model=GetCsvAnalyseResponse)
 def get_analysed_csv_data(
+    category:CsvDataCategory,
     db:Session = Depends(get_authorized_tenant_db),
 ):
-    return get_csv_analyses_data_service(db=db)
+    return get_csv_analyses_data_service(db=db,category=category)
