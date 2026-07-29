@@ -2,16 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, HttpUrl
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.multitenancy import (
+    get_current_company,
+    get_authorized_tenant_db,
+)
 from app.models.competetor_analyser import CompetetorAnalyser
 from app.models.competitor_model import Competitor
 from app.service.instagram_service import InstagramService
-from app.core.multitenancy import get_current_company
 
 
 router = APIRouter(
     prefix="/competitors",
-    tags=["Instagram Analysis"]
+    tags=["Competitor Instagram"]
 )
 
 instagram_service = InstagramService()
@@ -22,22 +24,18 @@ class InstagramURLRequest(BaseModel):
 
 
 # =========================================================
-# 1. Analyze using Instagram URL already stored
+# Helper - Get competitor
 # =========================================================
 
-@router.post("/{slug}/instagram/analyze")
-def analyze_competitor_instagram(
-    slug: str,
-    db: Session = Depends(get_db),
-    current_company=Depends(get_current_company),
+def get_competitor_or_404(
+    db: Session,
+    competitor_id: str,
 ):
-
-    # Find competitor using slug
     competitor = (
         db.query(Competitor)
         .filter(
-            Competitor.slug == slug,
-            Competitor.is_active.is_(True)
+            Competitor.id == competitor_id,
+            Competitor.is_active.is_(True),
         )
         .first()
     )
@@ -45,15 +43,25 @@ def analyze_competitor_instagram(
     if not competitor:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Competitor not found"
+            detail="Competitor not found",
         )
 
-    # Get latest analysis for this competitor
+    return competitor
+
+
+# =========================================================
+# Helper - Get latest competitor analysis
+# =========================================================
+
+def get_latest_competitor_analysis_or_404(
+    db: Session,
+    competitor_id,
+):
     analysis = (
         db.query(CompetetorAnalyser)
         .filter(
-            CompetetorAnalyser.competitor_id == competitor.id,
-            CompetetorAnalyser.is_latest.is_(True)
+            CompetetorAnalyser.competitor_id == competitor_id,
+            CompetetorAnalyser.is_latest.is_(True),
         )
         .first()
     )
@@ -61,100 +69,88 @@ def analyze_competitor_instagram(
     if not analysis:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Competitor analysis not found"
+            detail="Competitor analysis not found",
         )
 
-    # Instagram URL not discovered during website analysis
-    if not analysis.instagram:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Instagram URL not found"
-        )
+    return analysis
 
-    success = instagram_service.process_instagram(
-        company_id=str(current_company.id),
-        company_name=competitor.company_name,
-        instagram_url=analysis.instagram
+
+# =========================================================
+# Add / Edit Instagram URL
+# =========================================================
+
+@router.put("/{competitor_id}/instagram-url")
+def update_competitor_instagram_url(
+    competitor_id: str,
+    payload: InstagramURLRequest,
+    db: Session = Depends(get_authorized_tenant_db),
+    current_company=Depends(get_current_company),
+):
+    competitor = get_competitor_or_404(
+        db,
+        competitor_id,
     )
 
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Instagram analysis failed"
-        )
+    analysis = get_latest_competitor_analysis_or_404(
+        db,
+        competitor.id,
+    )
+
+    instagram_url = str(payload.instagram_url)
+
+    analysis.instagram = instagram_url
+
+    db.commit()
 
     return {
         "success": True,
-        "message": "Instagram analysis completed"
+        "message": "Competitor Instagram URL updated successfully",
+        "instagram_url": instagram_url,
     }
 
 
 # =========================================================
-# 2. Manually provide Instagram URL and analyze
+# Connect / Analyze Instagram
 # =========================================================
 
-@router.post("/{slug}/instagram/analyze-manual")
-def analyze_competitor_instagram_manual(
-    slug: str,
-    payload: InstagramURLRequest,
-    db: Session = Depends(get_db),
+@router.post("/{competitor_id}/instagram/connect")
+def connect_competitor_instagram(
+    competitor_id: str,
+    db: Session = Depends(get_authorized_tenant_db),
     current_company=Depends(get_current_company),
 ):
-
-    # Find competitor using slug
-    competitor = (
-        db.query(Competitor)
-        .filter(
-            Competitor.slug == slug,
-            Competitor.is_active.is_(True)
-        )
-        .first()
+    competitor = get_competitor_or_404(
+        db,
+        competitor_id,
     )
 
-    if not competitor:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Competitor not found"
-        )
-
-    # Get latest competitor analysis
-    analysis = (
-        db.query(CompetetorAnalyser)
-        .filter(
-            CompetetorAnalyser.competitor_id == competitor.id,
-            CompetetorAnalyser.is_latest.is_(True)
-        )
-        .first()
+    analysis = get_latest_competitor_analysis_or_404(
+        db,
+        competitor.id,
     )
 
-    if not analysis:
+    if not analysis.instagram:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Competitor analysis not found"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Competitor Instagram URL not found",
         )
 
-    instagram_url = str(payload.instagram_url)
-
-    # Save manually provided Instagram URL
-    analysis.instagram = instagram_url
-
-    db.commit()
-    db.refresh(analysis)
-
-    # Run Instagram analysis
     success = instagram_service.process_instagram(
-        company_id=str(current_company.id),
+        db=db,
+        company_id=current_company.id,
+        company_slug=str(current_company.slug),
         company_name=competitor.company_name,
-        instagram_url=instagram_url
+        instagram_url=analysis.instagram,
+        is_competitor=True,
     )
 
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Instagram analysis failed"
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to fetch competitor Instagram data",
         )
 
     return {
         "success": True,
-        "message": "Instagram URL saved and analysis completed"
+        "message": "Competitor Instagram data collected successfully",
     }

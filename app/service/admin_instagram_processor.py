@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.company_model import InstagramAnalysis
+from sqlalchemy import text
 
 
 class AdminInstagramProcessor:
@@ -280,14 +281,10 @@ class AdminInstagramProcessor:
         )
 
         try:
+            
             db.add(analysis)
             db.commit()
-            db.refresh(analysis)
 
-            print(
-                f"[INSTAGRAM PROCESSOR] Analysis saved "
-                f"for company {company_id}, version {new_version}"
-            )
 
             return analysis
 
