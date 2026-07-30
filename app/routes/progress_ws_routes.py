@@ -112,3 +112,54 @@ async def csv_upload_websocket_progress(websocket:WebSocket, company_slug:str):
             await websocket.close()
         except RuntimeError:
             pass
+
+@router.websocket("/ws/instagram-comparison/{competitor_id}")
+async def instagram_comparison_progress_ws(
+    websocket: WebSocket,
+    competitor_id: str,
+):
+    await websocket.accept()
+
+    key = f"instagram_comparison_progress:{competitor_id}"
+    last_payload = None
+
+    try:
+        while True:
+            data = await redis_client.get(key)
+
+            if data:
+                payload = json.loads(data)
+
+                # Only send when progress/status changes
+                if payload != last_payload:
+                    await websocket.send_json(payload)
+                    last_payload = payload
+
+                # Analysis finished
+                if payload.get("progress") == 100:
+                    break
+
+                # Optional failure handling
+                if payload.get("status") == "failed":
+                    break
+
+            await asyncio.sleep(1)
+
+    except WebSocketDisconnect:
+        pass
+
+    except Exception as e:
+        try:
+            await websocket.send_json({
+                "progress": 0,
+                "status": "failed",
+                "error": str(e),
+            })
+        except Exception:
+            pass
+
+    finally:
+        try:
+            await websocket.close()
+        except Exception:
+            pass

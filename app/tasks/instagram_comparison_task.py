@@ -10,6 +10,10 @@ from app.models.competitor_model import Competitor
 from app.core.logger import logger
 from app.core.database import sessionLocal
 
+from app.utils.progress_tracker import (
+    update_instagram_comparison_progress,
+)
+
 import json
 import asyncio
 
@@ -31,10 +35,22 @@ def process_instagram_comparison(self,current_company_slug:str,competitor_slug:s
         competitor = db.query(Competitor).filter(Competitor.slug == competitor_slug).first()
         if not competitor:
             raise ValueError(f"Competitor not found for slug {competitor_slug}")
+
+        update_instagram_comparison_progress(
+            str(competitor.id),
+            50,
+            "Loading Instagram data"
+        )
         
         registered_company_file_key = f'social_media/{current_company_slug}/admin/instagram_data.json'
         clean_comp_folder = competitor.company_name.strip().lower().replace(" ", "_")
         competitor_file_key = f'social_media/{current_company_slug}/competitor/{clean_comp_folder}/instagram_data.json'
+
+        update_instagram_comparison_progress(
+            str(competitor.id),
+            60,
+            "Instagram data loaded"
+        )
 
         try:
             registered_company_insta_raw = download_from_s3(registered_company_file_key)
@@ -58,6 +74,12 @@ def process_instagram_comparison(self,current_company_slug:str,competitor_slug:s
         if not competitor_insta_raw:
             raise ValueError(f"Empty Instagram data file for competitor: {competitor_file_key}")
 
+        update_instagram_comparison_progress(
+            str(competitor.id),
+            70,
+            "Calculating Instagram statistics"
+        )
+
         try:
             registered_company_insta_data = json.loads(registered_company_insta_raw)
         except json.JSONDecodeError as e:
@@ -71,23 +93,51 @@ def process_instagram_comparison(self,current_company_slug:str,competitor_slug:s
         registered_company_insta_stats = compute_instagram_stats(registered_company_insta_data)
         competitor_insta_stats = compute_instagram_stats(competitor_insta_data)
 
+        update_instagram_comparison_progress(
+            str(competitor.id),
+            80,
+            "Generating AI comparison"
+        )
+
         result = asyncio.run(instagram_comparing_agent(registered_company_insta_stats=registered_company_insta_stats,competitor_insta_stats=competitor_insta_stats))
         comparison = result["comparison"]
         competitor_highlights = result["competitor_highlights"]
+
+        update_instagram_comparison_progress(
+            str(competitor.id),
+            90,
+            "AI comparison completed"
+        )
 
         load_data_to_instagram_competitor_profile(db=db,competitor_id=competitor.id,competitor_highlights=competitor_highlights,competitor_compute_data=competitor_insta_stats)
         load_data_to_instagram_comparison_report(db=db,competitor_id=competitor.id,company_id=current_company.id,competitor_name=competitor.company_name,comparison=comparison)
 
         db.commit()
 
+        update_instagram_comparison_progress(
+            str(competitor.id),
+            100,
+            "completed"
+        )
+
         return {'message':'Task completed successfully saved!'}
 
     except Exception as e:
         if db:
             db.rollback()
-        logger.error(f"process_instagram_comparison failed for {current_company_slug}: {str(e)}")
-        if isinstance(e, (FileNotFoundError, ValueError)):
-            return {'error': str(e)}
+
+        if 'competitor' in locals() and competitor:
+            update_instagram_comparison_progress(
+                str(competitor.id),
+                -1,
+                "failed"
+            )
+
+        logger.error(
+            f"process_instagram_comparison failed "
+            f"for {current_company_slug}: {str(e)}"
+        )
+
         raise self.retry(exc=e)
     finally:
         if db:

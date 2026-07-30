@@ -5,7 +5,7 @@ from app.core.multitenancy import (
     get_current_company,
     get_authorized_tenant_db,
 )
-from app.models.company_model import ProfileDataAnalyser
+from app.models.company_model import ProfileDataAnalyser,InstagramAnalysis
 from app.schemas.instagram_schema import InstagramUrlUpdate
 from app.service.instagram.instagram_service import InstagramService
 
