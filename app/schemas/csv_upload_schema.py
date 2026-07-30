@@ -9,6 +9,7 @@ class GetCsvAnalyseResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)  # allows .from_orm() / model_validate(orm_obj)
 
     parsed_data: dict[str, Any] | list[Any]
+    data_category: Optional[str] = None
 
     summary: Optional[str] = None
     health_score: Optional[int] = None

@@ -84,3 +84,26 @@ class CompetitorComparison(TenantBase):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc)
     )
+
+class InstagramComparisonReport(TenantBase):
+    __tablename__ = "instagram_comparison_reports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, unique=True, nullable=False, default=uuid.uuid4)
+
+    competitor_id = Column(UUID(as_uuid=True), ForeignKey("competitors.id"), nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+
+    competitor_name = Column(String, nullable=True, index=True)
+
+    # LLM comparison output
+    engagement_gap = Column(Text, nullable=True)
+    content_strategy_gap = Column(Text, nullable=True)
+    audience_gap = Column(Text, nullable=True)
+    positioning_summary = Column(Text, nullable=True)
+    recommendations = Column(JSONB, nullable=True)
+
+    version = Column(Integer, nullable=False, default=1)
+    is_latest = Column(Boolean, nullable=False, default=True)
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

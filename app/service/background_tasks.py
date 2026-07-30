@@ -75,6 +75,7 @@ def run_background_crawler_pipeline(company_id: str, company_name: str, website_
 
         update_progress(company_id, 50, "Cleaning data")
 
+
         for page in pages:
             # Handle if page is a Pydantic object or a raw dictionary safely
             p_dict = page.dict() if hasattr(page, "dict") else page
@@ -84,12 +85,15 @@ def run_background_crawler_pipeline(company_id: str, company_name: str, website_
 
             extracted = extractor_agent.extract(p_dict)
 
+            social_links = extracted.get("social_links", {})
+
+
             crawled_payload["pages"].append({
                 "url": page_url,
                 "title": page_title,
                 "emails": extracted.get("emails", []),
                 "phones": extracted.get("phones", []),
-                "social_links": extracted.get("social_links", {}),
+                "social_links": social_links,
                 "clean_text": extracted.get("clean_text", ""),
                 "careers_page": extracted.get("careers_page", False),
             })
@@ -180,6 +184,7 @@ def run_background_crawler_pipeline(company_id: str, company_name: str, website_
             is_competitor=is_competitor
         )
         
+
 
         update_progress(company_id, 100, "Completed")
         print(f"[ASYNC TASK SUCCESS] Background storage synchronization complete for {company_name}!\n")
