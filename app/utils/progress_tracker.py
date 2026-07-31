@@ -50,6 +50,24 @@ def update_csv_file_upload_progress(company_slug:str, progress:int, status:str):
         ex=3600   
     )
 
+def update_instagram_comparison_progress(
+    competitor_id: str,
+    progress: int,
+    status: str
+):
+    key = f"instagram_comparison_progress:{competitor_id}"
+
+    payload = {
+        "progress": progress,
+        "status": status
+    }
+
+    redis_client.set(
+        key,
+        json.dumps(payload),
+        ex=3600
+    )
+
 def reset_progress(key_prefix: str, identifier: str):
     key = f'{key_prefix}:{identifier}'
     redis_client.delete(key)
