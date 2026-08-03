@@ -96,11 +96,14 @@ class InstagramComparisonReport(TenantBase):
     competitor_name = Column(String, nullable=True, index=True)
 
     # LLM comparison output
+    summary = Column(Text, nullable=True)  
     engagement_gap = Column(Text, nullable=True)
     content_strategy_gap = Column(Text, nullable=True)
     audience_gap = Column(Text, nullable=True)
+    posting_cadence_gap = Column(Text, nullable=True) 
     positioning_summary = Column(Text, nullable=True)
     recommendations = Column(JSONB, nullable=True)
+    content_recommendations = Column(JSONB, nullable=True) 
 
     version = Column(Integer, nullable=False, default=1)
     is_latest = Column(Boolean, nullable=False, default=True)

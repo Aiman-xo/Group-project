@@ -22,10 +22,12 @@ def load_data_to_instagram_competitor_profile(db:Session,competitor_id:str,compe
             competitor_id=competitor_id,
             version=next_version,
             is_latest=True,
+
             strongest_content_type = competitor_highlights.get("strongest_content_type"),
             standout_themes = competitor_highlights.get("standout_themes"),
             top_post_insight = competitor_highlights.get("top_post_insight"),
             notable_traits = competitor_highlights.get("notable_traits"),
+
             instagram_id = competitor_compute_data.get("instagram_id"),
             username = competitor_compute_data.get("username"),
             full_name = competitor_compute_data.get("full_name"),
@@ -37,6 +39,7 @@ def load_data_to_instagram_competitor_profile(db:Session,competitor_id:str,compe
             is_business_account = competitor_compute_data.get("is_business_account"),
             business_category_name = competitor_compute_data.get("business_category_name"),
             external_urls = competitor_compute_data.get("external_urls"),
+
             analyzed_posts_count = competitor_compute_data.get("analyzed_posts_count"),
             total_likes = competitor_compute_data.get("total_likes"),
             total_comments = competitor_compute_data.get("total_comments"),
@@ -45,6 +48,14 @@ def load_data_to_instagram_competitor_profile(db:Session,competitor_id:str,compe
             average_comments = competitor_compute_data.get("average_comments"),
             average_video_views = competitor_compute_data.get("average_video_views"),
             engagement_rate = competitor_compute_data.get("engagement_rate"),
+            
+            content_type_performance = competitor_compute_data.get("content_type_performance"),
+            posting_frequency_per_week = competitor_compute_data.get("posting_frequency_per_week"),
+            has_external_links = competitor_compute_data.get("has_external_links"),
+            avg_hashtags_per_post = competitor_compute_data.get("avg_hashtags_per_post"),
+            avg_caption_length = competitor_compute_data.get("avg_caption_length"),
+
+            latest_posts = competitor_compute_data.get("latest_posts"),
             top_hashtags = competitor_compute_data.get("top_hashtags"),
             top_mentions = competitor_compute_data.get("top_mentions"),
             content_type_stats = competitor_compute_data.get("content_type_stats"),
@@ -63,7 +74,7 @@ def load_data_to_instagram_competitor_profile(db:Session,competitor_id:str,compe
         logger.error(f"Unexpected error saving Instagram competitor profile for {competitor_id}: {str(e)}")
         raise
 
-def load_data_to_instagram_comparison_report(db:Session,competitor_id:str,company_id:str,competitor_name:str,comparison:dict,):
+def load_data_to_instagram_comparison_report(db:Session,competitor_id:str,company_id:str,competitor_name:str,comparison:dict,summary:str,content_recommendations:list):
     try:
         db.query(InstagramComparisonReport).filter(
             InstagramComparisonReport.competitor_id == competitor_id,
@@ -80,11 +91,14 @@ def load_data_to_instagram_comparison_report(db:Session,competitor_id:str,compan
             competitor_id=competitor_id,
             company_id=company_id,
             competitor_name=competitor_name,
+            summary=summary,
             engagement_gap=comparison.get("engagement_gap"),
             content_strategy_gap=comparison.get("content_strategy_gap"),
             audience_gap=comparison.get("audience_gap"),
+            posting_cadence_gap=comparison.get("posting_cadence_gap"),
             positioning_summary=comparison.get("positioning_summary"),
             recommendations=comparison.get("recommendations"),
+            content_recommendations=content_recommendations, 
             version=next_version,
             is_latest=True,
         )
@@ -100,3 +114,7 @@ def load_data_to_instagram_comparison_report(db:Session,competitor_id:str,compan
         db.rollback()
         logger.error(f"Unexpected error saving Instagram comparison report for {competitor_id}: {str(e)}")
         raise
+
+
+# def update_data_to_instagram_analyses_model(computed_data:dict):
+#     return computed_data

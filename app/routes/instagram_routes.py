@@ -182,6 +182,7 @@ def get_instagram_analysis(
             "is_business_account": analysis.is_business_account,
             "business_category_name": analysis.business_category_name,
             "external_urls": analysis.external_urls,
+            "has_external_links": analysis.has_external_links,
 
             # Posts summary
             "analyzed_posts_count": analysis.analyzed_posts_count,
@@ -199,8 +200,25 @@ def get_instagram_analysis(
                 else None
             ),
 
+            "avg_hashtags_per_post": (  
+                float(analysis.avg_hashtags_per_post)
+                if analysis.avg_hashtags_per_post is not None
+                else None
+            ),
+            "avg_caption_length": (  
+                float(analysis.avg_caption_length)
+                if analysis.avg_caption_length is not None
+                else None
+            ),
+            "posting_frequency_per_week": ( 
+                float(analysis.posting_frequency_per_week)
+                if analysis.posting_frequency_per_week is not None
+                else None
+            ),
+
             # Analysis
             "content_type_stats": analysis.content_type_stats,
+            "content_type_performance": analysis.content_type_performance,
             "top_hashtags": analysis.top_hashtags,
             "top_mentions": analysis.top_mentions,
 

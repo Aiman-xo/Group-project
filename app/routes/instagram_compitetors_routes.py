@@ -363,14 +363,29 @@ def get_competitor_instagram_analysis(
             "followers_count": p.followers_count,
             "following_count": p.follows_count,
             "posts_count": p.posts_count,
-
             "external_urls": p.external_urls,
+            "has_external_links": p.has_external_links,
 
             "performance": {
                 "posts_analyzed": p.analyzed_posts_count,
                 "engagement_rate": (
                     float(p.engagement_rate)
                     if p.engagement_rate is not None
+                    else None
+                ),
+                "avg_hashtags_per_post": (
+                    float(p.avg_hashtags_per_post)
+                    if p.avg_hashtags_per_post is not None
+                    else None
+                ),
+                "avg_caption_length": (
+                    float(p.avg_caption_length)
+                    if p.avg_caption_length is not None
+                    else None
+                ),
+                "posting_frequency_per_week": (
+                    float(p.posting_frequency_per_week)
+                    if p.posting_frequency_per_week is not None
                     else None
                 ),
                 "totals": {
@@ -384,6 +399,7 @@ def get_competitor_instagram_analysis(
                     "video_views": p.average_video_views,
                 },
                 "content_types": p.content_type_stats,
+                "content_type_performance": p.content_type_performance,
             },
 
             "content": {
@@ -391,6 +407,7 @@ def get_competitor_instagram_analysis(
                 "top_mentions": p.top_mentions,
                 "top_post": p.top_post,
                 "top_video": p.top_video,
+                "latest_posts": p.latest_posts,
             },
         }
 
@@ -435,6 +452,18 @@ def get_competitor_instagram_analysis(
             "company": company_profile.total_comments if company_profile else None,
             "competitor": profile.total_comments,
         },
+        "posting_frequency_per_week": {
+            "company": to_float(company_profile.posting_frequency_per_week) if company_profile else None,
+            "competitor": to_float(profile.posting_frequency_per_week),
+        },
+        "avg_hashtags_per_post": {
+            "company": to_float(company_profile.avg_hashtags_per_post) if company_profile else None,
+            "competitor": to_float(profile.avg_hashtags_per_post),
+        },
+        "avg_caption_length": {
+            "company": to_float(company_profile.avg_caption_length) if company_profile else None,
+            "competitor": to_float(profile.avg_caption_length),
+        },
     }
 
     return {
@@ -455,23 +484,24 @@ def get_competitor_instagram_analysis(
                 "version": profile.version,
                 "last_analyzed_at": profile.last_analyzed_at,
             },
-
             "company": {
                 "id": str(current_company.id),
                 "profile": serialize_profile(company_profile),
                 "has_instagram_connected": company_profile is not None,
                 "last_analyzed_at": company_profile.last_analyzed_at if company_profile else None,
             },
-
             "comparison": {
                 "metrics": metrics,
                 "narrative": {
+                    "summary": comparison.summary,
                     "engagement_gap": comparison.engagement_gap,
                     "content_strategy_gap": comparison.content_strategy_gap,
                     "audience_gap": comparison.audience_gap,
+                    "posting_cadence_gap": comparison.posting_cadence_gap,
                     "positioning_summary": comparison.positioning_summary,
                 },
                 "recommendations": comparison.recommendations,
+                "content_recommendations": comparison.content_recommendations,
             },
         },
     }

@@ -1,7 +1,55 @@
-from collections import Counter
+from collections import Counter,defaultdict
+from datetime import datetime
+
+MAX_POSTS_ANALYZED = 30  # tune this — 20-30 is a reasonable sample for engagement/content analysis
+
+def sort_posts_by_recency(posts):
+    def parse_ts(p):
+        ts = p.get("timestamp")
+        if not ts:
+            return datetime.min
+        try:
+            return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        except ValueError:
+            return datetime.min
+    return sorted(posts, key=parse_ts, reverse=True)
+
+def compute_content_type_performance(posts):
+    perf = defaultdict(lambda: {"count": 0, "total_likes": 0, "total_comments": 0})
+    for p in posts:
+        t = p.get("type") or "Unknown"
+        perf[t]["count"] += 1
+        perf[t]["total_likes"] += p.get("likesCount") or 0
+        perf[t]["total_comments"] += p.get("commentsCount") or 0
+
+    return {
+        t: {
+            "count": v["count"],
+            "avg_likes": round(v["total_likes"] / v["count"], 1),
+            "avg_comments": round(v["total_comments"] / v["count"], 1),
+        }
+        for t, v in perf.items()
+    }
+
+def compute_posting_frequency(posts):
+    timestamps = []
+    for p in posts:
+        ts = p.get("timestamp")
+        if not ts:
+            continue
+        try:
+            timestamps.append(datetime.fromisoformat(ts.replace("Z", "+00:00")))
+        except ValueError:
+            continue
+    timestamps.sort()
+    if len(timestamps) < 2:
+        return None
+    span_days = (timestamps[-1] - timestamps[0]).days or 1
+    return round(len(timestamps) / span_days * 7, 2)
 
 def compute_instagram_stats(data: dict) -> dict:
-    posts = data.get("latestPosts", [])
+    raw_posts = data.get("latestPosts", [])
+    posts = sort_posts_by_recency(raw_posts)[:MAX_POSTS_ANALYZED] 
     total_likes = sum(p.get("likesCount") or 0 for p in posts)
     total_comments = sum(p.get("commentsCount") or 0 for p in posts)
     total_video_views = sum(p.get("videoViewCount") or 0 for p in posts if p.get("videoViewCount"))
@@ -44,6 +92,7 @@ def compute_instagram_stats(data: dict) -> dict:
         "is_business_account": data.get("isBusinessAccount"),
         "business_category_name": data.get("businessCategoryName"),
         "external_urls": data.get("externalUrls"),
+        "has_external_links": bool(data.get("externalUrls")),
 
         "analyzed_posts_count": len(posts),
         "total_likes": total_likes,
@@ -52,11 +101,15 @@ def compute_instagram_stats(data: dict) -> dict:
         "average_likes": int(round(total_likes / n)),
         "average_comments": int(round(total_comments / n)),
         "average_video_views": int(round(total_video_views / len(video_posts))) if video_posts else 0,
+        "avg_hashtags_per_post" :round(sum(len(p.get("hashtags") or []) for p in posts) / n, 2),
+        "avg_caption_length" : round(sum(len(p.get("caption") or "") for p in posts) / n, 1),
+        "posting_frequency_per_week": compute_posting_frequency(posts),
         "engagement_rate": round(((total_likes + total_comments) / n) / (data.get("followersCount") or 1) * 100, 2),
 
         "top_hashtags": hashtag_counter.most_common(10),
         "top_mentions": mention_counter.most_common(5),
         "content_type_stats": dict(content_types),
+        "content_type_performance": compute_content_type_performance(posts),
         "top_post": {"caption": top_post.get("caption"), "likes": top_post.get("likesCount"), "url": top_post.get("url")} if top_post else None,
         "top_video": {"caption": top_video.get("caption"), "views": top_video.get("videoViewCount"), "url": top_video.get("url")} if top_video else None,
         "latest_posts": trimmed_posts,

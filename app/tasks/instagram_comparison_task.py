@@ -100,8 +100,11 @@ def process_instagram_comparison(self,current_company_slug:str,competitor_slug:s
         )
 
         result = asyncio.run(instagram_comparing_agent(registered_company_insta_stats=registered_company_insta_stats,competitor_insta_stats=competitor_insta_stats))
-        comparison = result["comparison"]
-        competitor_highlights = result["competitor_highlights"]
+        comparison = result.get("comparison", {})
+        competitor_highlights = result.get("competitor_highlights", {})
+        summary = result.get("summary")
+        content_recommendations = result.get("content_recommendations", [])
+
 
         update_instagram_comparison_progress(
             str(competitor.id),
@@ -110,7 +113,7 @@ def process_instagram_comparison(self,current_company_slug:str,competitor_slug:s
         )
 
         load_data_to_instagram_competitor_profile(db=db,competitor_id=competitor.id,competitor_highlights=competitor_highlights,competitor_compute_data=competitor_insta_stats)
-        load_data_to_instagram_comparison_report(db=db,competitor_id=competitor.id,company_id=current_company.id,competitor_name=competitor.company_name,comparison=comparison)
+        load_data_to_instagram_comparison_report(db=db,competitor_id=competitor.id,company_id=current_company.id,competitor_name=competitor.company_name,comparison=comparison,summary=summary,content_recommendations=content_recommendations)
 
         db.commit()
 
