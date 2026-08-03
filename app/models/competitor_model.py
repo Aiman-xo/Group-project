@@ -89,6 +89,12 @@ class InstagramCompetitorProfile(TenantBase):
     average_video_views = Column(Integer, nullable=False, default=0)
     engagement_rate = Column(Numeric(10, 2), nullable=True)
 
+    content_type_performance = Column(JSONB, nullable=True)
+    posting_frequency_per_week = Column(Numeric(10, 2),nullable=True,default=0)
+    has_external_links = Column(Boolean,nullable=True)
+    avg_hashtags_per_post = Column(Numeric(10, 2), nullable=True)
+    avg_caption_length = Column(Numeric(10, 2), nullable=True)
+
     content_type_stats = Column(JSONB, nullable=True)
     top_hashtags = Column(JSONB, nullable=True)
     top_mentions = Column(JSONB, nullable=True)
@@ -103,6 +109,7 @@ class InstagramCompetitorProfile(TenantBase):
     top_post_insight = Column(Text, nullable=True)
     notable_traits = Column(JSONB, nullable=True)
 
+    latest_posts = Column(JSONB,nullable=True)
     version = Column(Integer, nullable=False, default=1)
     is_latest = Column(Boolean, nullable=False, default=True)
     last_analyzed_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
