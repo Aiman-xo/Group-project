@@ -298,8 +298,17 @@ def get_competitor_instagram_analysis(
     db: Session = Depends(get_authorized_tenant_db),
     current_company=Depends(get_current_company),
 ):
-    competitor = get_competitor_or_404(db, competitor_id)
-    analysis = get_latest_competitor_analysis_or_404(db, competitor.id)
+    # Make sure competitor exists and belongs to the
+    # currently authorized tenant.
+    competitor = get_competitor_or_404(
+        db,
+        competitor_id,
+    )
+
+    analysis = get_latest_competitor_analysis_or_404(
+        db,
+        competitor.id,
+    )
 
     profile = (
         db.query(InstagramCompetitorProfile)
@@ -320,6 +329,8 @@ def get_competitor_instagram_analysis(
         .first()
     )
 
+    # Company's own Instagram data (saved separately when they
+    # connected Instagram at registration / from their insights tab).
     company_profile = (
         db.query(InstagramAnalysis)
         .filter(
@@ -329,6 +340,7 @@ def get_competitor_instagram_analysis(
         .first()
     )
 
+    # No Instagram analysis has been generated yet.
     if not profile or not comparison:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -402,6 +414,7 @@ def get_competitor_instagram_analysis(
     def to_float(v):
         return float(v) if v is not None else None
 
+    # Structured numeric metrics for charts — no LLM text parsing needed.
     metrics = {
         "followers_count": {
             "company": company_profile.followers_count if company_profile else None,

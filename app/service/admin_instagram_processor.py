@@ -294,14 +294,10 @@ class AdminInstagramProcessor:
         )
 
         try:
+            
             db.add(analysis)
             db.commit()
-            db.refresh(analysis)
 
-            print(
-                f"[INSTAGRAM PROCESSOR] Analysis saved "
-                f"for company {company_id}, version {new_version}"
-            )
 
             return analysis
 
