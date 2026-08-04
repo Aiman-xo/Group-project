@@ -107,3 +107,28 @@ class InstagramComparisonReport(TenantBase):
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class GoogleAdsComparisonReport(TenantBase):
+    __tablename__ = "google_ads_comparison_reports"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, unique=True, nullable=False, default=uuid.uuid4)
+
+    competitor_id = Column(UUID(as_uuid=True), ForeignKey("competitors.id"), nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), nullable=True, index=True)
+
+    competitor_name = Column(String, nullable=True, index=True)
+
+    # Ad Insights & Gaps
+    active_ads_count = Column(Integer, nullable=False, default=0)
+    ad_copy_strategy_gap = Column(Text, nullable=True)
+    media_format_gap = Column(Text, nullable=True)
+    positioning_summary = Column(Text, nullable=True)
+    raw_ads_data = Column(JSONB, nullable=True)  # Stores the JSON list of ads + iframe/render specs
+    recommendations = Column(JSONB, nullable=True)
+
+    version = Column(Integer, nullable=False, default=1)
+    is_latest = Column(Boolean, nullable=False, default=True)
+
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
