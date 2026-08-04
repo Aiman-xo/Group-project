@@ -484,12 +484,6 @@ def get_competitor_instagram_analysis(
                 "version": profile.version,
                 "last_analyzed_at": profile.last_analyzed_at,
             },
-            "company": {
-                "id": str(current_company.id),
-                "profile": serialize_profile(company_profile),
-                "has_instagram_connected": company_profile is not None,
-                "last_analyzed_at": company_profile.last_analyzed_at if company_profile else None,
-            },
             "comparison": {
                 "metrics": metrics,
                 "narrative": {
