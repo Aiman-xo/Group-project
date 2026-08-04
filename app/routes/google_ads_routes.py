@@ -1,7 +1,8 @@
+# from uuid import UUID
 # from fastapi import APIRouter, HTTPException, Query
-# from typing import List, Optional
+# from typing import List
 # from app.service.google_ads_service import GoogleAdsService
-# from app.schemas.google_ads_schema import FrontendAdAnalysis
+# from app.schemas.google_ads_schema import GoogleAdItem
 
 # router = APIRouter(
 #     prefix="/api/google-ads",
@@ -11,7 +12,7 @@
 # ads_service = GoogleAdsService()
 
 
-# @router.get("/analyze", response_model=List[FrontendAdAnalysis])
+# @router.get("/analyze", response_model=List[GoogleAdItem])
 # async def get_and_analyze_ads(
 #     search_term: str = Query(..., description="Company domain or brand name (e.g. scaler.com, bridgeon.in)")
 # ):
@@ -21,21 +22,9 @@
 #     Runs in-memory without S3/DB overhead.
 #     """
 #     try:
-#         # 1. Fetch ads/footprints using SerpApi
-#         raw_ads = ads_service.fetch_active_ads(search_term=search_term)
-        
-#         if not raw_ads:
-#             return []
-
-#         # 2. Analyze each ad item for frontend rendering strategy
-#         analyzed_results = []
-#         for ad in raw_ads:
-#             # Convert Pydantic item to dict if needed
-#             ad_dict = ad.model_dump() if hasattr(ad, "model_dump") else ad
-#             analysis = ads_service.analyze_ad_for_frontend(ad_dict)
-#             analyzed_results.append(analysis)
-
-#         return analyzed_results
+#         # Fetches ads and automatically performs UI render analysis
+#         ads = ads_service.fetch_active_ads(search_term=search_term)
+#         return ads
 
 #     except Exception as e:
 #         raise HTTPException(
@@ -43,10 +32,13 @@
 #             detail=f"Failed to analyze Google Ads for '{search_term}': {str(e)}"
 #         )
 
-from fastapi import APIRouter, HTTPException, Query
-from typing import List
+from uuid import UUID
+from fastapi import APIRouter, HTTPException, Depends, Path
+from sqlalchemy.orm import Session
+from typing import Dict, Any
+from app.models.competitor_model import Competitor
 from app.service.google_ads_service import GoogleAdsService
-from app.schemas.google_ads_schema import GoogleAdItem
+from app.core.multitenancy import get_authorized_tenant_db  
 
 router = APIRouter(
     prefix="/api/google-ads",
@@ -56,22 +48,47 @@ router = APIRouter(
 ads_service = GoogleAdsService()
 
 
-@router.get("/analyze", response_model=List[GoogleAdItem])
+@router.get("/analyze/{competitor_id}", response_model=Dict[str, Any])
 async def get_and_analyze_ads(
-    search_term: str = Query(..., description="Company domain or brand name (e.g. scaler.com, bridgeon.in)")
+    competitor_id: UUID = Path(..., description="UUID of the competitor"),
+    # search_term: str = Query(..., description="Company domain or brand name (e.g. scaler.com, bridgeon.in)"),
+    db: Session = Depends(get_authorized_tenant_db)
 ):
     """
-    Fetches active Google Ads / search presence for a domain and analyzes
-    rendering instructions (iframes, youtube embeds, images) for the frontend.
-    Runs in-memory without S3/DB overhead.
+    Checks the DB for existing Google Ads report for the competitor.
+    If missing, fetches active Google Ads via SerpApi, computes frontend render specs,
+    runs AI strategy analysis via GoogleAdsAgent, and persists the report to DB.
     """
+    competitor = (
+        db.query(Competitor)
+        .filter(Competitor.id == competitor_id)
+        .first()
+    )
+
+    if competitor is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Competitor not found."
+        )
+
     try:
-        # Fetches ads and automatically performs UI render analysis
-        ads = ads_service.fetch_active_ads(search_term=search_term)
-        return ads
+        report = ads_service.get_or_analyze_ads(
+            competitor_id=competitor.id,
+            company_id=None,
+            competitor_name=competitor.company_name,
+            search_term=(
+                competitor.website_url
+                or competitor.company_name
+            ),
+            db=db,
+        )
+
+        return report
 
     except Exception as e:
+        print(f"[GOOGLE ADS ROUTE ERROR] {e}")
+
         raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to analyze Google Ads for '{search_term}': {str(e)}"
+            status_code=500,
+            detail="Failed to analyze Google Ads."
         )
