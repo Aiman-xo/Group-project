@@ -140,33 +140,8 @@ class GoogleAdsService:
 
             # 2. Universal Organic Fallback if no paid ads are found
             if not parsed_ads:
-                search_params = {
-                    "engine": "google",
-                    "q": clean_term,
-                    "gl": "in",
-                    "api_key": self.serp_api_key
-                }
-                search_res = requests.get(url, params=search_params, timeout=15)
-                search_data = search_res.json()
-                
-                organic_results = search_data.get("organic_results", [])[:3]
-                for idx, org in enumerate(organic_results):
-                    parsed_ads.append(
-                        GoogleAdItem(
-                            ad_id=f"brand_footprint_{idx+1}",
-                            advertiser_id=None,
-                            advertiser_name=clean_term,
-                            format="brand_footprint",
-                            platform="GOOGLE_SEARCH",
-                            first_shown=None,
-                            last_shown=None,
-                            ad_url=org.get("link"),
-                            headline_or_body=f"{org.get('title', '')} - {org.get('snippet', '')}",
-                            render_type="text_card",
-                            should_use_iframe=False,
-                            embed_url=None
-                        )
-                    )
+                print(f"[GOOGLE ADS SERVICE] No active Google Ads found for '{search_term}'")
+                return []
 
             return parsed_ads
 
@@ -252,7 +227,6 @@ class GoogleAdsService:
 
             db.add(new_report)
             db.commit()
-            db.refresh(new_report)
 
         except Exception:
             db.rollback()

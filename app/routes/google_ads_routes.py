@@ -8,7 +8,7 @@ from app.service.google_ads_service import GoogleAdsService
 from app.core.multitenancy import get_authorized_tenant_db  
 
 router = APIRouter(
-    prefix="/api/google-ads",
+    prefix="/google-ads",
     tags=["Google Ads Intelligence"]
 )
 

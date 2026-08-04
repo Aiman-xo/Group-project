@@ -87,6 +87,7 @@ def create_competitor(
             "industry": new_competitor.industry,
             "location": new_competitor.location,
             "description": new_competitor.description,
+            "slug":slug
         }
 
     except Exception:
