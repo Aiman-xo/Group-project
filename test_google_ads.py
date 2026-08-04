@@ -1,13 +1,14 @@
 # test_google_ads.py
 import json
 from app.agents.google_ads_agent import GoogleAdsAgent
+from app.models.competetor_analyser import GoogleAdsComparisonReport
 
 def test_ads():
     agent = GoogleAdsAgent()
     
     # You can pass website_url or company_name
-    target_url = "https://www.brototype.com/"
-    target_name = "Brototype"
+    target_url = "https://bridgeon.in/"
+    target_name = "Bridgeon"
     
     print(f"\n--- Testing Google Ads Fetch for URL: {target_url} ---")
     
