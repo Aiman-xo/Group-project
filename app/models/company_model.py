@@ -220,6 +220,12 @@ class InstagramAnalysis(TenantBase):
         nullable=True
     )
 
+    content_type_performance = Column(JSONB, nullable=True)
+    posting_frequency_per_week = Column(Numeric(10, 2),nullable=True,default=0)
+    has_external_links = Column(Boolean,nullable=True)
+    avg_hashtags_per_post = Column(Numeric(10, 2), nullable=True)
+    avg_caption_length = Column(Numeric(10, 2), nullable=True)
+
 
     # =====================================================
     # Content Type Analysis

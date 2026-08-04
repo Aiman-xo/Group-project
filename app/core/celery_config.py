@@ -18,7 +18,8 @@ celery_app = Celery(
         "app.tasks.s3_event_handle_task",
         "app.tasks.process_etl_files",
         "app.tasks.sqs_poll_task",
-        "app.tasks.process_csv_file_task"
+        "app.tasks.process_csv_file_task",
+        "app.tasks.instagram_comparison_task"
         ]   # ← where your tasks live
 )
 

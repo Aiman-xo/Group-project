@@ -4,6 +4,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.company_model import InstagramAnalysis
+from app.utils.instagram_comparison_utils import compute_posting_frequency,compute_content_type_performance,sort_posts_by_recency,MAX_POSTS_ANALYZED
+from sqlalchemy import text
 
 
 class AdminInstagramProcessor:
@@ -15,14 +17,16 @@ class AdminInstagramProcessor:
         instagram_data: dict,
         source_file: str,
     ) -> InstagramAnalysis:
-
-        posts = instagram_data.get("latestPosts") or []
+         
+        raw_posts = instagram_data.get("latestPosts") or []
+        posts = sort_posts_by_recency(raw_posts)[:MAX_POSTS_ANALYZED] 
 
         # =====================================================
         # Basic totals
         # =====================================================
 
         analyzed_posts_count = len(posts)
+        n = analyzed_posts_count or 1 
 
         total_likes = sum(
             post.get("likesCount") or 0
@@ -45,6 +49,11 @@ class AdminInstagramProcessor:
             post.get("videoViewCount") or 0
             for post in videos_with_views
         )
+
+        posting_frequency_per_week = compute_posting_frequency(posts=posts)
+        content_type_performance = compute_content_type_performance(posts=posts)
+        avg_hashtags_per_post = round(sum(len(p.get("hashtags") or []) for p in posts) / n, 2)
+        avg_caption_length = round(sum(len(p.get("caption") or "") for p in posts) / n, 1)
 
         # =====================================================
         # Averages
@@ -251,7 +260,7 @@ class AdminInstagramProcessor:
             ),
 
             external_urls=instagram_data.get("externalUrls") or [],
-
+            has_external_links = bool(instagram_data.get("externalUrls")),
             analyzed_posts_count=analyzed_posts_count,
 
             total_likes=total_likes,
@@ -263,6 +272,11 @@ class AdminInstagramProcessor:
             average_video_views=average_video_views,
 
             engagement_rate=str(engagement_rate),
+
+            content_type_performance=content_type_performance,
+            posting_frequency_per_week=posting_frequency_per_week,
+            avg_hashtags_per_post=avg_hashtags_per_post,
+            avg_caption_length=avg_caption_length,
 
             content_type_stats=content_type_stats,
             top_hashtags=top_hashtags,
@@ -280,14 +294,10 @@ class AdminInstagramProcessor:
         )
 
         try:
+            
             db.add(analysis)
             db.commit()
-            db.refresh(analysis)
 
-            print(
-                f"[INSTAGRAM PROCESSOR] Analysis saved "
-                f"for company {company_id}, version {new_version}"
-            )
 
             return analysis
 

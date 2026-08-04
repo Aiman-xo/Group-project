@@ -67,6 +67,9 @@ def process_uploaded_csv(self,company_id:str,company_slug:str, s3_key:str, categ
         )
 
         update_csv_file_upload_progress(company_slug,90,'Saving analysed datas...')
+
+        logger.info(f"[{company_slug}] Mapping analysis result to model")
+
         new_version.summary = analysis_result.get("summary")
         new_version.health_score = analysis_result.get("health_score")
         new_version.health_score_reason = analysis_result.get("health_score_reason")
@@ -74,11 +77,21 @@ def process_uploaded_csv(self,company_id:str,company_slug:str, s3_key:str, categ
         new_version.problem_areas = analysis_result.get("problem_areas")
         new_version.recommendations = analysis_result.get("recommendations")
         new_version.metric_changes = analysis_result.get("metric_changes")
+
+        logger.info(f"[{company_slug}] Adding CSVDatas to session")
         
 
         db.add(new_version)
+
+        logger.info(f"[{company_slug}] Starting DB commit")
+
         db.commit()
+
+        logger.info(f"[{company_slug}] DB commit successful")
+
         update_csv_file_upload_progress(company_slug, 100, 'Analysis complete!') 
+
+        logger.info(f"[{company_slug}] Progress updated to 100")
 
     except Exception as e:
         if db:
